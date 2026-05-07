@@ -1,0 +1,170 @@
+============================================================
+  UB Student Centre Food Ordering Application
+  University of Botswana — Setup & Deployment Guide
+============================================================
+
+REQUIREMENTS
+------------
+• PHP 7.4+ with PDO and PDO_MySQL extensions
+• MySQL 5.7+ or MariaDB 10.3+
+• Apache with mod_rewrite enabled (WAMP, XAMPP, or live server)
+• A Google Maps API key (for customer delivery tracking)
+
+
+STEP 1 — DATABASE SETUP
+------------------------
+1. Open phpMyAdmin (or your MySQL client).
+2. Import database/schema.sql — this creates the database,
+   all 9 tables, sample data (outlets, menu items), and
+   default accounts.
+
+Default login credentials (all use same password format):
+  Admin     : username=admin         password=Admin@1234
+              → frontend/admin/index.html
+
+  Outlet staff accounts:
+    Sefalana Bakery    : sefalana_staff / Staff@1234
+    Blue White Plate   : bwp_manager    / Staff@1234
+    Hot Spot Food Court: hotspot_staff  / Staff@1234
+              → frontend/dashboard/index.html
+
+  Customers: register via the customer app signup form.
+              → frontend/customer/index.html
+
+
+STEP 2 — BACKEND CONFIGURATION
+--------------------------------
+Copy .env.example to .env in the project root and set:
+  DB_HOST, DB_USER, DB_PASS, DB_NAME
+  JWT_SECRET       — use at least 32 random characters
+  CORS_ALLOWED_ORIGINS — comma-separated allowed frontend origins
+  PAYMENT_PROVIDER_ENABLED=false until a real gateway is integrated
+
+Do not commit real .env values or production secrets.
+
+
+STEP 3 — GOOGLE MAPS API KEY
+------------------------------
+In frontend/customer/index.html, set:
+  window.APP_CONFIG = { googleMapsApiKey: 'YOUR_KEY' };
+
+Use a restricted browser key from:
+  https://console.cloud.google.com/
+Required APIs: Maps JavaScript API, Geocoding API.
+
+Without a key, maps will not render but all other features work.
+
+
+STEP 4 — FILE PATHS
+---------------------
+The frontend pages use relative paths to reach the backend.
+If you serve the entire project from your web root (e.g.
+C:\wamp\www\student-food-app\), the relative paths work as-is.
+
+If deploying to a subfolder, update the API_BASE variable in:
+  frontend/customer/js/api.js   (const API_BASE = ...)
+  frontend/dashboard/index.html (const API = ...)
+  frontend/admin/index.html     (const API = ...)
+
+
+STEP 5 — APACHE / MOD_REWRITE
+--------------------------------
+backend/.htaccess handles URL routing for the PHP API.
+Ensure AllowOverride All is set in your Apache config.
+On WAMP: click WAMP tray → Apache → Apache modules → rewrite_module.
+
+
+ACCESSING THE SYSTEM
+---------------------
+Customer App (mobile-responsive):
+  http://localhost/student-food-app/frontend/customer/index.html
+
+Outlet Staff Dashboard:
+  http://localhost/student-food-app/frontend/dashboard/index.html
+
+Admin Panel:
+  http://localhost/student-food-app/frontend/admin/index.html
+
+
+SYSTEM OVERVIEW
+---------------
+The application consists of:
+
+  database/schema.sql          — Full MySQL schema + seed data
+  backend/config/db.php        — Database connection + JWT config
+  backend/includes/helpers.php — JWT auth, CORS, response helpers
+  backend/api/auth/signup.php  — Customer registration endpoint
+  backend/api/auth/login.php   — Login (customer | staff | admin)
+  backend/api/outlets.php      — List/get food outlets with ratings
+  backend/api/menu.php         — Get menu items (with category filter)
+  backend/api/orders.php       — Place, view, update, cancel orders
+  backend/api/ratings.php      — Submit and view customer ratings
+  backend/api/notifications.php— Customer push notifications
+  backend/api/admin.php        — Admin: users, staff, reports
+  backend/api/menu_manage.php  — Staff: add/edit/toggle menu items
+  backend/.htaccess            — Apache URL routing
+
+  frontend/customer/index.html — Single-page customer mobile web app
+  frontend/customer/css/app.css— Customer app styles
+  frontend/customer/js/api.js  — API client for customer app
+  frontend/dashboard/index.html— Outlet staff dashboard (SPA)
+  frontend/admin/index.html    — Admin panel (SPA)
+
+
+ORDER STATUS FLOW
+------------------
+  pending → preparing → ready → on_transit → delivered
+                                           ↘ cancelled
+
+Customers can cancel orders that are still "pending".
+Staff update status through the dashboard (View → Update Status).
+Customers receive automatic notifications at each status change.
+
+
+FEATURES IMPLEMENTED
+---------------------
+Customer App:
+  ✅ Signup with validation
+  ✅ Login / Logout
+  ✅ Browse food outlets with star ratings
+  ✅ Favorite outlets
+  ✅ Browse menu by category with item images
+  ✅ Menu search, dietary filters, and sorting
+  ✅ Add items to cart (multi-item, quantity control)
+  ✅ Cart management (remove items, view total)
+  ✅ Place order — Pickup or Delivery
+  ✅ Delivery location via Google Maps (click or search)
+  ✅ Order history list
+  ✅ Order detail with tracking steps
+  ✅ Cancel pending orders
+  ✅ Rate and review delivered orders (1–5 stars)
+  ✅ In-app notifications with unread badge
+  ✅ Profile page
+
+Outlet Staff Dashboard:
+  ✅ Login with outlet-scoped access
+  ✅ Live order board with status filters
+  ✅ Order stats (pending/preparing/ready/transit counts)
+  ✅ Order detail modal with full item list
+  ✅ Update order status (triggers customer notification)
+  ✅ View ratings & reviews for their outlet
+  ✅ Menu management: view, add, toggle availability
+  ✅ Menu metadata for dietary tags, allergens, stock, prep time (API/schema)
+  ✅ Outlet revenue and delivery/pickup reports
+
+Admin Panel:
+  ✅ System-wide overview with revenue across all outlets
+  ✅ Per-outlet performance report (orders, revenue, avg rating)
+  ✅ Order status breakdown chart
+  ✅ Customer account management (list, search, delete)
+  ✅ Soft-delete/anonymise customer account workflow
+  ✅ Outlet staff directory
+  ✅ All orders system-wide (latest 500)
+  ✅ All ratings per outlet (tabbed view)
+
+NOT IMPLEMENTED (as per documentation scope):
+  ✗ Online payment gateway settlement (schema/API guardrails are present, provider integration still required)
+  ✗ Native Android APK compilation
+  ✗ Email/SMS/push provider delivery (notification abstraction still stores in-app notifications)
+  ✗ Full WCAG certification (focus, touch-target, and live-region basics have been improved)
+============================================================

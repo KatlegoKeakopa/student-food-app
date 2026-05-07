@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>UB Food App</title>
+  <link rel="stylesheet" href="css/app.css" />
+  <script>
+    window.APP_CONFIG = { googleMapsApiKey: '' };
+  </script>
+</head>
+<body>
+
+<!-- ============================================================
+     AUTH SCREENS
+============================================================ -->
+<div id="screen-auth">
+  <div class="auth-container">
+    <div class="auth-logo">🍽️</div>
+    <div class="auth-title">UB Student Centre</div>
+    <div class="auth-subtitle">Food Ordering Application</div>
+
+    <!-- LOGIN FORM -->
+    <div class="auth-card" id="login-form">
+      <h2>Sign In</h2>
+      <div id="login-error" class="alert alert-danger" style="display:none"></div>
+      <div class="form-group">
+        <label>Username</label>
+        <input class="form-control" type="text" id="login-username" placeholder="Enter your username" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input class="form-control" type="password" id="login-password" placeholder="Enter your password" />
+      </div>
+      <button class="btn btn-primary" id="btn-login">Sign In</button>
+      <div class="auth-footer">
+        Don't have an account?
+        <button class="link-btn" onclick="showSignup()">Sign Up</button>
+      </div>
+    </div>
+
+    <!-- SIGNUP FORM -->
+    <div class="auth-card" id="signup-form" style="display:none">
+      <h2>Create Account</h2>
+      <div id="signup-error" class="alert alert-danger" style="display:none"></div>
+      <div id="signup-success" class="alert alert-success" style="display:none"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>First Name</label>
+          <input class="form-control" type="text" id="signup-firstname" placeholder="Lesego" />
+        </div>
+        <div class="form-group">
+          <label>Last Name</label>
+          <input class="form-control" type="text" id="signup-lastname" placeholder="Dube" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Username</label>
+        <input class="form-control" type="text" id="signup-username" placeholder="Choose a username" />
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input class="form-control" type="email" id="signup-email" placeholder="you@ub.ac.bw" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Student ID</label>
+          <input class="form-control" type="text" id="signup-studentid" placeholder="2020XXXXX" />
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input class="form-control" type="tel" id="signup-phone" placeholder="7x xxx xxx" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input class="form-control" type="password" id="signup-password" placeholder="Min 10 chars, mixed case + number" />
+      </div>
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <input class="form-control" type="password" id="signup-confirm" placeholder="Re-enter password" />
+      </div>
+      <button class="btn btn-primary" id="btn-signup">Create Account</button>
+      <div class="auth-footer">
+        Already have an account?
+        <button class="link-btn" onclick="showLogin()">Sign In</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MAIN APP SHELL (shown after login)
+============================================================ -->
+<div id="screen-app" style="display:none">
+  <div id="toast" class="toast" role="status" aria-live="polite" style="display:none"></div>
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <button class="btn-icon" id="header-back" style="display:none" onclick="goBack()" aria-label="Go back">&#8592;</button>
+    <h1 id="header-title">UB Food App</h1>
+    <div class="badge-notif">
+      <button class="btn-icon" onclick="showPage('notifications')" aria-label="Notifications">&#128276;</button>
+      <span class="badge" id="notif-badge" style="display:none">0</span>
+    </div>
+  </header>
+
+  <!-- ---- HOME PAGE ---- -->
+  <div class="page active" id="page-home">
+    <div id="home-greeting" class="section-title"></div>
+    <div class="alert alert-info" style="margin-bottom:12px">
+      🏪 Choose a food outlet to browse and order
+    </div>
+    <div id="outlets-list">
+      <div class="empty-state"><div class="empty-icon">⏳</div><p>Loading outlets…</p></div>
+    </div>
+  </div>
+
+  <!-- ---- MENU PAGE ---- -->
+  <div class="page" id="page-menu">
+    <div class="menu-tools">
+      <input class="form-control" type="search" id="menu-search" placeholder="Search this menu" oninput="debouncedMenuSearch()" />
+      <select class="form-control" id="diet-filter" onchange="reloadCurrentMenu()">
+        <option value="">All diets</option>
+        <option value="vegetarian">Vegetarian</option>
+        <option value="vegan">Vegan</option>
+        <option value="halal">Halal</option>
+      </select>
+      <select class="form-control" id="sort-filter" onchange="reloadCurrentMenu()">
+        <option value="category">Category</option>
+        <option value="price_asc">Price: low to high</option>
+        <option value="price_desc">Price: high to low</option>
+        <option value="prep">Fastest prep</option>
+      </select>
+    </div>
+    <div class="category-pills" id="category-pills"></div>
+    <div id="menu-list"></div>
+    <div style="height:80px"></div> <!-- cart FAB space -->
+    <!-- Cart FAB -->
+    <div id="cart-fab" style="display:none; position:fixed; bottom:calc(var(--nav-h)+16px); right:16px; z-index:90;">
+      <button class="btn btn-accent" style="border-radius:50px; padding:12px 20px; box-shadow:0 4px 16px rgba(255,111,0,.4);"
+              onclick="showPage('cart')">
+        🛒 <span id="cart-fab-count">0</span> items · BWP <span id="cart-fab-total">0.00</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ---- CART PAGE ---- -->
+  <div class="page" id="page-cart">
+    <div id="cart-empty" class="empty-state" style="display:none">
+      <div class="empty-icon">🛒</div><p>Your cart is empty.<br>Browse a menu to add items.</p>
+    </div>
+    <div id="cart-items-container">
+      <div class="section-title">Order from: <span id="cart-outlet-name"></span></div>
+      <div id="cart-items-list"></div>
+      <div class="cart-total-row">
+        <span>Total</span>
+        <span>BWP <span id="cart-total">0.00</span></span>
+      </div>
+      <div class="divider"></div>
+      <div class="section-title">Order Type</div>
+      <div class="order-type-group">
+        <div class="order-type-btn selected" id="type-pickup" onclick="selectOrderType('pickup')">
+          <div class="type-icon">🏃</div>
+          <div class="type-label">Pickup</div>
+        </div>
+        <div class="order-type-btn" id="type-delivery" onclick="selectOrderType('delivery')">
+          <div class="type-icon">🛵</div>
+          <div class="type-label">Delivery</div>
+        </div>
+      </div>
+
+      <div id="delivery-section" style="display:none">
+        <div class="section-title">Delivery Location</div>
+        <div class="loc-search">
+          <input class="form-control" type="text" id="delivery-address" placeholder="Enter building / location name" />
+          <button class="btn btn-primary btn-sm" onclick="searchLocation()">📍</button>
+        </div>
+        <div id="map-container"><div id="map"></div></div>
+      </div>
+
+      <div class="section-title">Payment Method</div>
+      <select class="form-control" id="payment-method" style="margin-bottom:14px">
+        <option value="cash_on_pickup">Cash on Pickup</option>
+      </select>
+
+      <div class="form-group">
+        <label>Special Notes (optional)</label>
+        <textarea class="form-control" id="special-notes" rows="2" placeholder="Allergies, preferences…"></textarea>
+      </div>
+
+      <div id="order-error" class="alert alert-danger" style="display:none"></div>
+      <button class="btn btn-primary" id="btn-place-order">Place Order</button>
+    </div>
+  </div>
+
+  <!-- ---- ORDERS PAGE ---- -->
+  <div class="page" id="page-orders">
+    <div class="section-title">Your Orders</div>
+    <div id="orders-list">
+      <div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div>
+    </div>
+  </div>
+
+  <!-- ---- ORDER DETAIL PAGE ---- -->
+  <div class="page" id="page-order-detail">
+    <div id="order-detail-content"></div>
+  </div>
+
+  <!-- ---- PROFILE PAGE ---- -->
+  <div class="page" id="page-profile">
+    <div class="card">
+      <div class="card-body">
+        <div style="text-align:center; padding:12px 0">
+          <div style="font-size:3.5rem">👤</div>
+          <div style="font-weight:700; font-size:1.1rem; margin-top:8px" id="profile-name"></div>
+          <div class="text-muted" id="profile-username"></div>
+          <div class="text-muted" id="profile-email"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div style="font-weight:700; margin-bottom:12px">About This App</div>
+        <p class="text-muted" style="font-size:.85rem; line-height:1.6">
+          UB Student Centre Food Ordering App allows you to order from Sefalana Bakery,
+          The Blue White Plate Take Away, and Hot Spot Food Court — right from your phone.
+          Place orders for pickup or delivery anywhere on campus.
+        </p>
+      </div>
+    </div>
+    <button class="btn btn-danger" onclick="logout()" style="width:100%;margin-top:8px">Sign Out</button>
+  </div>
+
+  <!-- ---- NOTIFICATIONS PAGE ---- -->
+  <div class="page" id="page-notifications">
+    <div class="section-title">Notifications</div>
+    <div id="notif-list">
+      <div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div>
+    </div>
+  </div>
+
+  <!-- ---- RATING PAGE ---- -->
+  <div class="page" id="page-rate">
+    <div class="card">
+      <div class="card-body">
+        <div style="text-align:center">
+          <div style="font-size:2.5rem; margin-bottom:8px">⭐</div>
+          <div style="font-weight:700">Rate Your Order</div>
+          <div class="text-muted" id="rate-order-label"></div>
+        </div>
+        <div style="text-align:center; margin-top:16px">
+          <div class="star-selector" id="star-selector" style="justify-content:center"></div>
+          <div class="form-group" style="margin-top:14px">
+            <label>Write a Review (optional)</label>
+            <textarea class="form-control" id="rate-review" rows="3" placeholder="How was your experience?"></textarea>
+          </div>
+          <div id="rate-error" class="alert alert-danger" style="display:none"></div>
+          <button class="btn btn-primary" id="btn-submit-rating">Submit Rating</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="showPage('home')" id="nav-home">
+      <span class="nav-icon">🏠</span><span>Home</span>
+    </button>
+    <button class="nav-item" onclick="showPage('orders')" id="nav-orders">
+      <span class="nav-icon">📋</span><span>Orders</span>
+    </button>
+    <button class="nav-item" onclick="showPage('cart')" id="nav-cart" style="position:relative">
+      <span class="nav-icon">🛒</span><span>Cart</span>
+      <span class="cart-count" id="nav-cart-count" style="display:none">0</span>
+    </button>
+    <button class="nav-item" onclick="showPage('profile')" id="nav-profile">
+      <span class="nav-icon">👤</span><span>Profile</span>
+    </button>
+  </nav>
+
+</div><!-- end screen-app -->
+
+<script src="js/api.js"></script>
+<script>
+// ============================================================
+// State
+// ============================================================
+let authToken   = sessionStorage.getItem('ub_token')  || null;
+let authUser    = JSON.parse(sessionStorage.getItem('ub_user') || 'null');
+let cart        = { outletId: null, outletName: '', items: {} }; // items: {foodItemId: {name,price,qty}}
+let currentPage = 'home';
+let pageHistory = [];
+let mapObj      = null;
+let mapMarker   = null;
+let selectedOrderType  = 'pickup';
+let ratingOrderId      = null;
+let selectedStarRating = 0;
+let favoriteOutlets    = new Map();
+let currentCategory    = null;
+let menuSearchTimer    = null;
+
+// ============================================================
+// Init
+// ============================================================
+window.addEventListener('load', () => {
+  if (authToken && authUser) {
+    showApp();
+  } else {
+    document.getElementById('screen-auth').style.display = 'flex';
+  }
+});
+
+// ============================================================
+// Auth
+// ============================================================
+function showLogin()  {
+  document.getElementById('login-form').style.display  = 'block';
+  document.getElementById('signup-form').style.display = 'none';
+  document.getElementById('login-error').style.display = 'none';
+}
+function showSignup() {
+  document.getElementById('login-form').style.display  = 'none';
+  document.getElementById('signup-form').style.display = 'block';
+}
+
+document.getElementById('btn-login').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-login');
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!username || !password) { showErr(errEl, 'Please enter username and password.'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+  const res = await api.login({ username, password, role: 'customer' });
+  btn.disabled = false; btn.textContent = 'Sign In';
+
+  if (!res.ok) { showErr(errEl, res.data.message); return; }
+  storeAuth(res.data.data);
+  showApp();
+});
+
+document.getElementById('btn-signup').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-signup');
+  const errEl = document.getElementById('signup-error');
+  const okEl  = document.getElementById('signup-success');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+
+  const password = document.getElementById('signup-password').value;
+  const confirm  = document.getElementById('signup-confirm').value;
+  if (password !== confirm) { showErr(errEl, 'Passwords do not match.'); return; }
+
+  const body = {
+    username:   document.getElementById('signup-username').value.trim(),
+    password,
+    first_name: document.getElementById('signup-firstname').value.trim(),
+    last_name:  document.getElementById('signup-lastname').value.trim(),
+    email:      document.getElementById('signup-email').value.trim(),
+    phone:      document.getElementById('signup-phone').value.trim(),
+    student_id: document.getElementById('signup-studentid').value.trim(),
+  };
+
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  const res = await api.signup(body);
+  btn.disabled = false; btn.textContent = 'Create Account';
+
+  if (!res.ok) { showErr(errEl, res.data.message); return; }
+  storeAuth(res.data.data);
+  showApp();
+});
+
+function storeAuth(data) {
+  authToken = data.token;
+  authUser  = { username: data.username, first_name: data.first_name, last_name: data.last_name, email: data.email };
+  sessionStorage.setItem('ub_token', authToken);
+  sessionStorage.setItem('ub_user',  JSON.stringify(authUser));
+}
+
+async function logout() {
+  if (!confirm('Sign out?')) return;
+  await api.logout();
+  sessionStorage.removeItem('ub_token');
+  sessionStorage.removeItem('ub_user');
+  authToken = null; authUser = null;
+  document.getElementById('screen-app').style.display = 'none';
+  document.getElementById('screen-auth').style.display = 'flex';
+  showLogin();
+}
+
+// ============================================================
+// App shell
+// ============================================================
+function showApp() {
+  document.getElementById('screen-auth').style.display = 'none';
+  document.getElementById('screen-app').style.display  = 'block';
+  // Populate profile
+  if (authUser) {
+    document.getElementById('home-greeting').textContent = `Welcome, ${authUser.first_name}!`;
+    document.getElementById('profile-name').textContent = `${authUser.first_name} ${authUser.last_name || ''}`;
+    document.getElementById('profile-username').textContent = `@${authUser.username}`;
+    document.getElementById('profile-email').textContent = authUser.email || '';
+  }
+  loadOutlets();
+  loadFavorites();
+  loadNotifications();
+  showPage('home');
+}
+
+// ============================================================
+// Navigation
+// ============================================================
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(`page-${page}`)?.classList.add('active');
+
+  // Nav highlight
+  ['home','orders','cart','profile'].forEach(n => {
+    document.getElementById(`nav-${n}`)?.classList.remove('active');
+  });
+  if (['home','orders','cart','profile'].includes(page)) {
+    document.getElementById(`nav-${page}`)?.classList.add('active');
+  }
+
+  const backPages  = ['menu','cart','order-detail','rate','notifications'];
+  const backBtn    = document.getElementById('header-back');
+  backBtn.style.display = backPages.includes(page) ? 'block' : 'none';
+
+  // Page titles
+  const titles = {
+    home: 'UB Food App', menu: 'Menu', cart: 'My Cart',
+    orders: 'My Orders', 'order-detail': 'Order Details',
+    profile: 'Profile', notifications: 'Notifications', rate: 'Rate Order',
+  };
+  document.getElementById('header-title').textContent = titles[page] || 'UB Food App';
+
+  if (page === 'orders')        loadOrders();
+  if (page === 'notifications') loadNotifications(true);
+  if (page === 'cart')          renderCart();
+
+  pageHistory.push(currentPage);
+  currentPage = page;
+}
+
+function goBack() {
+  const prev = pageHistory.pop() || 'home';
+  currentPage = prev;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(`page-${prev}`)?.classList.add('active');
+  ['home','orders','cart','profile'].forEach(n => document.getElementById(`nav-${n}`)?.classList.remove('active'));
+  if (['home','orders','cart','profile'].includes(prev)) document.getElementById(`nav-${prev}`)?.classList.add('active');
+  const backPages = ['menu','cart','order-detail','rate','notifications'];
+  document.getElementById('header-back').style.display = backPages.includes(prev) ? 'block' : 'none';
+  const titles = { home:'UB Food App', menu:'Menu', cart:'My Cart', orders:'My Orders', 'order-detail':'Order Details', profile:'Profile', notifications:'Notifications', rate:'Rate Order' };
+  document.getElementById('header-title').textContent = titles[prev] || 'UB Food App';
+}
+
+// ============================================================
+// Outlets
+// ============================================================
+async function loadOutlets() {
+  const el = document.getElementById('outlets-list');
+  const res = await api.getOutlets(authToken);
+  if (!res.ok) { el.innerHTML = `<div class="alert alert-danger">${res.data.message}</div>`; return; }
+  const outlets = res.data.data;
+  const icons = ['🥐','🍔','🌯'];
+  el.innerHTML = outlets.map((o, i) => `
+    <div class="outlet-card" onclick="openOutlet(${o.id}, '${encodeURIComponent(o.name)}')">
+      <button class="favorite-btn ${favoriteOutlets.has(String(o.id)) ? 'active' : ''}"
+              onclick="event.stopPropagation(); toggleOutletFavorite(${o.id})"
+              aria-label="${favoriteOutlets.has(String(o.id)) ? 'Remove favorite' : 'Save favorite'}">
+        ${favoriteOutlets.has(String(o.id)) ? '♥' : '♡'}
+      </button>
+      <div class="outlet-img">${icons[i % icons.length]}</div>
+      <div class="outlet-info">
+        <div class="outlet-name">${escHtml(o.name)}</div>
+        <div class="outlet-desc">${escHtml(o.description || '')}</div>
+        <div class="outlet-meta">
+          <span class="stars">${starDisplay(o.avg_rating)}</span>
+          <span class="text-muted" style="font-size:.78rem">${o.avg_rating ? o.avg_rating + ' · ' + o.review_count + ' reviews' : 'No reviews yet'}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadFavorites() {
+  const res = await api.getFavorites(authToken);
+  if (!res.ok) return;
+  favoriteOutlets = new Map();
+  (res.data.data.favorites || []).forEach(f => {
+    if (f.outlet_id) favoriteOutlets.set(String(f.outlet_id), f.id);
+  });
+  if (document.getElementById('page-home').classList.contains('active')) loadOutlets();
+}
+
+async function toggleOutletFavorite(outletId) {
+  const existingId = favoriteOutlets.get(String(outletId));
+  const res = existingId
+    ? await api.removeFavorite(existingId, authToken)
+    : await api.addFavorite({ outlet_id: outletId }, authToken);
+  if (!res.ok) { toast(res.data.message || 'Could not update favorite.'); return; }
+  await loadFavorites();
+  toast(existingId ? 'Removed from favorites.' : 'Saved to favorites.');
+}
+
+// ============================================================
+// Menu
+// ============================================================
+let currentOutletId   = null;
+let currentOutletName = '';
+let menuItems         = [];
+
+async function openOutlet(id, encodedName) {
+  currentOutletId   = id;
+  currentOutletName = decodeURIComponent(encodedName);
+  currentCategory = null;
+  document.getElementById('menu-search').value = '';
+  document.getElementById('diet-filter').value = '';
+  document.getElementById('sort-filter').value = 'category';
+  document.getElementById('header-title').textContent = currentOutletName;
+  showPage('menu');
+  await loadMenu(id);
+}
+
+async function loadMenu(outletId, category = null) {
+  currentCategory = category;
+  const el = document.getElementById('menu-list');
+  el.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading menu…</p></div>';
+  const filters = {
+    category,
+    q: document.getElementById('menu-search').value.trim(),
+    diet: document.getElementById('diet-filter').value,
+    sort: document.getElementById('sort-filter').value,
+  };
+  const res = await api.getMenu(outletId, filters, authToken);
+  if (!res.ok) { el.innerHTML = `<div class="alert alert-danger">${res.data.message}</div>`; return; }
+
+  const { items, categories } = res.data.data;
+  menuItems = items;
+
+  // Render category pills
+  const pillsEl = document.getElementById('category-pills');
+  pillsEl.innerHTML = `<button class="pill ${!category ? 'active' : ''}" onclick="loadMenu(${outletId}, null)">All</button>` +
+    categories.map(c => `<button class="pill ${category === c ? 'active' : ''}" onclick="loadCategory('${encodeURIComponent(c)}')">${escHtml(c)}</button>`).join('');
+
+  if (!items.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">🍽️</div><p>No items available.</p></div>'; return; }
+
+  el.innerHTML = items.map(item => {
+    const cartEntry = cart.items[item.id];
+    const qty = cartEntry ? cartEntry.qty : 0;
+    return `
+      <div class="menu-item">
+        <div class="menu-item-img">
+          ${item.image_url ? `<img src="${escHtml(item.image_url)}" alt="${escHtml(item.name)}" onerror="this.parentNode.textContent='🍽️'"/>` : '🍽️'}
+        </div>
+        <div class="menu-item-info">
+          <div class="menu-item-name">${escHtml(item.name)}</div>
+          <div class="menu-item-desc">${escHtml(item.description || '')}</div>
+          ${item.dietary_tags ? `<div class="tag-row">${String(item.dietary_tags).split(',').map(t => `<span class="tag">${escHtml(t.trim())}</span>`).join('')}</div>` : ''}
+          <div class="menu-item-price">BWP ${parseFloat(item.price).toFixed(2)}</div>
+        </div>
+        <div class="qty-ctrl">
+          <button class="qty-btn" onclick="changeQty(${item.id}, -1)">−</button>
+          <span class="qty-val" id="qty-${item.id}">${qty}</span>
+          <button class="qty-btn" onclick="changeQty(${item.id}, 1)">+</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  updateCartFAB();
+}
+
+function reloadCurrentMenu() {
+  if (currentOutletId) loadMenu(currentOutletId, currentCategory);
+}
+
+function debouncedMenuSearch() {
+  clearTimeout(menuSearchTimer);
+  menuSearchTimer = setTimeout(reloadCurrentMenu, 250);
+}
+
+function loadCategory(encodedCategory) {
+  loadMenu(currentOutletId, decodeURIComponent(encodedCategory));
+}
+
+function changeQty(itemId, delta) {
+  const item = menuItems.find(i => i.id == itemId);
+  if (!item) return;
+
+  // If adding from a different outlet, clear cart
+  if (cart.outletId && cart.outletId !== currentOutletId && delta > 0) {
+    if (!confirm('Adding from a different outlet will clear your current cart. Continue?')) return;
+    cart = { outletId: null, outletName: '', items: {} };
+  }
+
+  cart.outletId   = currentOutletId;
+  cart.outletName = currentOutletName;
+
+  const current = cart.items[itemId] ? cart.items[itemId].qty : 0;
+  const newQty  = Math.max(0, current + delta);
+
+  if (newQty === 0) {
+    delete cart.items[itemId];
+  } else {
+    cart.items[itemId] = { name: item.name, price: parseFloat(item.price), qty: newQty };
+  }
+
+  document.getElementById(`qty-${itemId}`).textContent = newQty;
+  updateCartFAB();
+}
+
+function updateCartFAB() {
+  const count = Object.values(cart.items).reduce((s, i) => s + i.qty, 0);
+  const total = Object.values(cart.items).reduce((s, i) => s + i.price * i.qty, 0);
+  const fab   = document.getElementById('cart-fab');
+  const badge = document.getElementById('nav-cart-count');
+
+  if (count > 0) {
+    fab.style.display = 'block';
+    document.getElementById('cart-fab-count').textContent = count;
+    document.getElementById('cart-fab-total').textContent = total.toFixed(2);
+    badge.style.display = 'flex';
+    badge.textContent = count;
+  } else {
+    fab.style.display = 'none';
+    badge.style.display = 'none';
+  }
+}
+
+// ============================================================
+// Cart
+// ============================================================
+function renderCart() {
+  const container = document.getElementById('cart-items-container');
+  const emptyEl   = document.getElementById('cart-empty');
+  const items     = Object.entries(cart.items);
+
+  if (!items.length) {
+    container.style.display = 'none';
+    emptyEl.style.display   = 'flex';
+    return;
+  }
+  emptyEl.style.display   = 'none';
+  container.style.display = 'block';
+
+  document.getElementById('cart-outlet-name').textContent = cart.outletName;
+
+  const total = items.reduce((s, [, v]) => s + v.price * v.qty, 0);
+  document.getElementById('cart-items-list').innerHTML = items.map(([id, v]) => `
+    <div class="cart-item">
+      <span style="font-size:1.2rem">🍽️</span>
+      <div class="cart-item-name">${escHtml(v.name)} × ${v.qty}</div>
+      <div class="cart-item-price">BWP ${(v.price * v.qty).toFixed(2)}</div>
+      <button class="cart-remove" onclick="removeCartItem(${id})">✕</button>
+    </div>
+  `).join('');
+
+  document.getElementById('cart-total').textContent = total.toFixed(2);
+  updateOrderTypUI();
+}
+
+function removeCartItem(id) {
+  delete cart.items[id];
+  updateCartFAB();
+  renderCart();
+}
+
+function selectOrderType(type) {
+  selectedOrderType = type;
+  updateOrderTypUI();
+}
+
+function updateOrderTypUI() {
+  document.getElementById('type-pickup').classList.toggle('selected',   selectedOrderType === 'pickup');
+  document.getElementById('type-delivery').classList.toggle('selected', selectedOrderType === 'delivery');
+  document.getElementById('delivery-section').style.display = selectedOrderType === 'delivery' ? 'block' : 'none';
+  document.getElementById('payment-method').innerHTML = selectedOrderType === 'delivery'
+    ? '<option value="cash_on_delivery">Cash on Delivery</option>'
+    : '<option value="cash_on_pickup">Cash on Pickup</option>';
+  if (selectedOrderType === 'delivery') initMap();
+}
+
+// ============================================================
+// Map
+// ============================================================
+function initMap() {
+  if (mapObj) return;
+  if (!window.google || !window.google.maps) {
+    const key = window.APP_CONFIG?.googleMapsApiKey;
+    if (key && !document.getElementById('google-maps-js')) {
+      const script = document.createElement('script');
+      script.id = 'google-maps-js';
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places`;
+      script.onload = initMap;
+      document.head.appendChild(script);
+      return;
+    }
+    document.getElementById('map').innerHTML = '<div class="empty-state" style="padding:28px 16px"><p>Map configuration is required for precise delivery location.</p></div>';
+    return;
+  }
+  const ubCenter = { lat: -24.6617, lng: 25.9326 }; // University of Botswana
+  mapObj = new google.maps.Map(document.getElementById('map'), {
+    center: ubCenter, zoom: 15,
+    disableDefaultUI: true, zoomControl: true,
+  });
+  mapObj.addListener('click', e => setMapLocation(e.latLng.lat(), e.latLng.lng()));
+  // Try to get user location
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const latlng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      mapObj.setCenter(latlng);
+      setMapLocation(latlng.lat, latlng.lng);
+    });
+  }
+}
+
+function setMapLocation(lat, lng) {
+  if (mapMarker) mapMarker.setMap(null);
+  mapMarker = new google.maps.Marker({ position: { lat, lng }, map: mapObj, title: 'Delivery Location' });
+  // Reverse geocode
+  const gc = new google.maps.Geocoder();
+  gc.geocode({ location: { lat, lng } }, (results, status) => {
+    if (status === 'OK' && results[0]) {
+      document.getElementById('delivery-address').value = results[0].formatted_address;
+    }
+  });
+}
+
+function searchLocation() {
+  const addr = document.getElementById('delivery-address').value.trim();
+  if (!addr || !mapObj) return;
+  const gc = new google.maps.Geocoder();
+  gc.geocode({ address: addr + ', University of Botswana' }, (results, status) => {
+    if (status === 'OK' && results[0]) {
+      const loc = results[0].geometry.location;
+      mapObj.setCenter(loc);
+      setMapLocation(loc.lat(), loc.lng());
+    }
+  });
+}
+
+// ============================================================
+// Place Order
+// ============================================================
+document.getElementById('btn-place-order').addEventListener('click', async () => {
+  const errEl = document.getElementById('order-error');
+  errEl.style.display = 'none';
+
+  const items = Object.entries(cart.items).map(([id, v]) => ({ food_item_id: parseInt(id), quantity: v.qty }));
+  if (!items.length) { showErr(errEl, 'Your cart is empty.'); return; }
+
+  const body = {
+    outlet_id:      cart.outletId,
+    order_type:     selectedOrderType,
+    items,
+    payment_method: document.getElementById('payment-method').value,
+    special_notes:  document.getElementById('special-notes').value.trim(),
+  };
+
+  if (selectedOrderType === 'delivery') {
+    body.delivery_address = document.getElementById('delivery-address').value.trim();
+    if (!body.delivery_address) { showErr(errEl, 'Please provide a delivery address.'); return; }
+    if (mapMarker) {
+      body.delivery_lat = mapMarker.getPosition().lat();
+      body.delivery_lng = mapMarker.getPosition().lng();
+    }
+  }
+
+  const btn = document.getElementById('btn-place-order');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Placing Order…';
+  const res = await api.placeOrder(body, authToken);
+  btn.disabled = false; btn.textContent = 'Place Order';
+
+  if (!res.ok) { showErr(errEl, res.data.message); return; }
+
+  // Clear cart
+  cart = { outletId: null, outletName: '', items: {} };
+  updateCartFAB();
+  mapObj = null; mapMarker = null;
+  selectedOrderType = 'pickup';
+
+  const orderId = res.data.data.order_id;
+  toast(`Order #${orderId} placed successfully. We are preparing it now.`);
+  showPage('orders');
+});
+
+// ============================================================
+// Orders
+// ============================================================
+async function loadOrders() {
+  const el = document.getElementById('orders-list');
+  el.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading orders…</p></div>';
+  const res = await api.getOrders(authToken);
+  if (!res.ok) { el.innerHTML = `<div class="alert alert-danger">${res.data.message}</div>`; return; }
+  const orders = res.data.data;
+  if (!orders.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No orders yet.<br>Browse a menu to place your first order!</p></div>';
+    return;
+  }
+  el.innerHTML = orders.map(o => `
+    <div class="order-card" onclick="openOrderDetail(${o.id})">
+      <div class="order-card-header">
+        <div>
+          <div class="order-id">Order #${o.id}</div>
+          <div class="order-outlet">${escHtml(o.outlet_name)}</div>
+        </div>
+        <span class="status-badge status-${o.status}">${statusLabel(o.status)}</span>
+      </div>
+      <div class="order-footer">
+        <span class="order-amount">BWP ${parseFloat(o.total_amount).toFixed(2)}</span>
+        <span class="text-muted" style="font-size:.78rem">${relativeTime(o.created_at)}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openOrderDetail(id) {
+  showPage('order-detail');
+  const el = document.getElementById('order-detail-content');
+  el.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div>';
+  const res = await api.getOrder(id, authToken);
+  if (!res.ok) { el.innerHTML = `<div class="alert alert-danger">${res.data.message}</div>`; return; }
+  const o = res.data.data;
+
+  const statusSteps = ['pending','preparing','ready','on_transit','delivered'];
+  const stepLabels  = { pending:'Order Placed', preparing:'Preparing', ready:'Ready', on_transit:'On the Way', delivered:'Delivered' };
+  const curIdx = statusSteps.indexOf(o.status);
+
+  const stepsHtml = statusSteps.map((s, i) => {
+    const isDone   = i < curIdx || o.status === 'delivered';
+    const isActive = i === curIdx;
+    return `<div class="track-step ${isDone ? 'done' : ''} ${isActive ? 'active-step' : ''}">
+      <div class="track-label">${stepLabels[s]}</div>
+      ${isActive ? '<div class="track-time">Current status</div>' : ''}
+    </div>`;
+  }).join('');
+
+  const canRate   = o.status === 'delivered' && !o.rating;
+  const canCancel = o.status === 'pending';
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-body">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+          <div>
+            <div class="fw-bold" style="font-size:1.05rem">Order #${o.id}</div>
+            <div class="text-muted">${escHtml(o.outlet_name)}</div>
+          </div>
+          <span class="status-badge status-${o.status}">${statusLabel(o.status)}</span>
+        </div>
+        <div class="divider"></div>
+        <div class="section-title">Items</div>
+        ${(o.items || []).map(i => `
+          <div style="display:flex; justify-content:space-between; padding:6px 0">
+            <span>${escHtml(i.name)} × ${i.quantity}</span>
+            <span class="fw-bold">BWP ${(parseFloat(i.unit_price) * i.quantity).toFixed(2)}</span>
+          </div>`).join('')}
+        <div class="cart-total-row">
+          <span>Total</span>
+          <span>BWP ${parseFloat(o.total_amount).toFixed(2)}</span>
+        </div>
+        <div class="divider"></div>
+        <div style="display:flex; gap:16px; flex-wrap:wrap; font-size:.85rem; color:var(--muted)">
+          <span>📦 ${o.order_type === 'delivery' ? 'Delivery' : 'Pickup'}</span>
+          <span>💳 ${o.payment_method.replace(/_/g,' ')}</span>
+          <span>📅 ${new Date(o.created_at).toLocaleString()}</span>
+          ${o.estimated_ready_at ? `<span>⏱ ETA ${new Date(o.estimated_ready_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>` : ''}
+        </div>
+        ${o.delivery_address ? `<div class="mt-8 text-muted" style="font-size:.83rem">📍 ${escHtml(o.delivery_address)}</div>` : ''}
+        ${o.special_notes ? `<div class="mt-8 text-muted" style="font-size:.83rem">📝 ${escHtml(o.special_notes)}</div>` : ''}
+      </div>
+    </div>
+
+    ${o.status !== 'cancelled' ? `
+    <div class="card">
+      <div class="card-body">
+        <div class="section-title">Order Progress</div>
+        <div class="tracking-steps">${stepsHtml}</div>
+      </div>
+    </div>` : ''}
+
+    ${o.rating ? `
+    <div class="card">
+      <div class="card-body">
+        <div class="section-title">Your Rating</div>
+        <div>${starDisplay(o.rating.rating)} <span class="text-muted">(${o.rating.rating}/5)</span></div>
+        ${o.rating.review ? `<p class="text-muted mt-8">"${escHtml(o.rating.review)}"</p>` : ''}
+      </div>
+    </div>` : ''}
+
+    <div style="display:flex; gap:10px; margin-top:4px">
+      ${canRate   ? `<button class="btn btn-accent" onclick="openRating(${o.id}, '${escHtml(o.outlet_name)}')" style="flex:1">⭐ Rate Order</button>` : ''}
+      ${canCancel ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder(${o.id})" style="flex:1">Cancel Order</button>` : ''}
+    </div>
+  `;
+}
+
+async function cancelOrder(id) {
+  if (!confirm('Cancel this order?')) return;
+  const res = await api.cancelOrder(id, authToken);
+  if (!res.ok) { toast(res.data.message); return; }
+  toast('Order cancelled.');
+  openOrderDetail(id);
+}
+
+// ============================================================
+// Rating
+// ============================================================
+function openRating(orderId, outletName) {
+  ratingOrderId = orderId;
+  selectedStarRating = 0;
+  document.getElementById('rate-order-label').textContent = `Order #${orderId} · ${outletName}`;
+  document.getElementById('rate-review').value = '';
+  document.getElementById('rate-error').style.display = 'none';
+
+  // Build star UI
+  const sel = document.getElementById('star-selector');
+  sel.innerHTML = [1,2,3,4,5].map(n =>
+    `<span onclick="selectStar(${n})" id="star-${n}">⭐</span>`
+  ).join('');
+  updateStars();
+  showPage('rate');
+}
+
+function selectStar(n) {
+  selectedStarRating = n;
+  updateStars();
+}
+function updateStars() {
+  [1,2,3,4,5].forEach(n => {
+    document.getElementById(`star-${n}`).style.opacity = n <= selectedStarRating ? '1' : '0.3';
+  });
+}
+
+document.getElementById('btn-submit-rating').addEventListener('click', async () => {
+  const errEl = document.getElementById('rate-error');
+  errEl.style.display = 'none';
+  if (!selectedStarRating) { showErr(errEl, 'Please select a star rating.'); return; }
+
+  const btn = document.getElementById('btn-submit-rating');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  const res = await api.submitRating({
+    order_id: ratingOrderId,
+    rating:   selectedStarRating,
+    review:   document.getElementById('rate-review').value.trim(),
+  }, authToken);
+  btn.disabled = false; btn.textContent = 'Submit Rating';
+
+  if (!res.ok) { showErr(errEl, res.data.message); return; }
+  toast('Thank you for your feedback.');
+  goBack();
+});
+
+// ============================================================
+// Notifications
+// ============================================================
+async function loadNotifications(markRead = false) {
+  const el = document.getElementById('notif-list');
+  el.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div>';
+  const res = await api.getNotifications(authToken);
+  if (!res.ok) { el.innerHTML = `<div class="alert alert-danger">${res.data.message}</div>`; return; }
+
+  const { notifications, unread_count } = res.data.data;
+  const badge = document.getElementById('notif-badge');
+  if (unread_count > 0 && !markRead) {
+    badge.style.display = 'flex';
+    badge.textContent   = unread_count;
+  } else {
+    badge.style.display = 'none';
+  }
+
+  if (!notifications.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔔</div><p>No notifications yet.</p></div>';
+  } else {
+    el.innerHTML = notifications.map(n => `
+      <div class="notif-item ${n.is_read == 0 ? 'unread' : ''}" onclick="${n.order_id ? `openOrderDetail(${n.order_id})` : ''}">
+        <div class="notif-msg">${escHtml(n.message)}</div>
+        <div class="notif-time">${relativeTime(n.created_at)}</div>
+      </div>`).join('');
+  }
+
+  if (markRead && unread_count > 0) {
+    await api.markNotifsRead(authToken);
+    badge.style.display = 'none';
+  }
+}
+
+// ============================================================
+// Utility
+// ============================================================
+function showErr(el, msg) {
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.style.display = 'none'; }, 3200);
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function statusLabel(s) {
+  const map = { pending:'Pending', preparing:'Preparing', ready:'Ready', on_transit:'On the Way', delivered:'Delivered', cancelled:'Cancelled' };
+  return map[s] || s;
+}
+
+function starDisplay(rating) {
+  if (!rating) return '☆☆☆☆☆';
+  const full = Math.round(rating);
+  return '⭐'.repeat(full) + '☆'.repeat(5 - full);
+}
+
+function relativeTime(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1)   return 'Just now';
+  if (mins < 60)  return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)   return `${hrs}h ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
+</script>
+</body>
+</html>

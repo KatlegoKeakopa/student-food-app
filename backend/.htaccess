@@ -1,0 +1,26 @@
+Options -Indexes
+RewriteEngine On
+
+# Route all /api/* requests to the correct PHP file
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Auth routes
+RewriteRule ^api/auth/signup$      api/auth/signup.php      [L]
+RewriteRule ^api/auth/login$       api/auth/login.php       [L]
+RewriteRule ^api/auth/logout$      api/auth/logout.php      [L]
+
+# Resource routes (support trailing ID: /api/orders/5)
+RewriteRule ^api/outlets(/.*)?$        api/outlets.php         [L,QSA]
+RewriteRule ^api/menu$                 api/menu.php            [L,QSA]
+RewriteRule ^api/orders(/[0-9]+)?$     api/orders.php          [L,QSA]
+RewriteRule ^api/ratings$              api/ratings.php         [L,QSA]
+RewriteRule ^api/notifications$        api/notifications.php   [L,QSA]
+RewriteRule ^api/favorites$            api/favorites.php       [L,QSA]
+RewriteRule ^api/addresses$            api/addresses.php       [L,QSA]
+RewriteRule ^api/support$              api/support.php         [L,QSA]
+RewriteRule ^api/admin$                api/admin.php           [L,QSA]
+RewriteRule ^api/menu_manage$          api/menu_manage.php     [L,QSA]
+
+# Security: block direct access to includes/config
+RewriteRule ^(config|includes)/ - [F,L]
