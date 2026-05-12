@@ -177,6 +177,58 @@ function auditLog(?string $actor, ?string $role, string $action, string $entityT
     }
 }
 
+function providerReference(string $prefix): string {
+    return strtoupper($prefix) . '-' . date('YmdHis') . '-' . bin2hex(random_bytes(4));
+}
+
+function hashDriverToken(string $token): string {
+    return hash('sha256', $token);
+}
+
+function requireDriverToken(PDO $db, int $driverId, string $token): array {
+    if ($driverId <= 0 || $token === '') {
+        error('Driver credentials are required.', 401);
+    }
+    $stmt = $db->prepare(
+        'SELECT id, full_name, phone, verification_status
+         FROM drivers
+         WHERE id = ? AND api_token_hash = ?'
+    );
+    $stmt->execute([$driverId, hashDriverToken($token)]);
+    $driver = $stmt->fetch();
+    if (!$driver || $driver['verification_status'] !== 'approved') {
+        error('Driver credentials are invalid or inactive.', 401);
+    }
+    return $driver;
+}
+
+function enqueueNotification(
+    string $recipient,
+    string $channel,
+    string $templateKey,
+    array $payload = [],
+    ?string $role = null
+): void {
+    try {
+        $db = getDB();
+        $stmt = $db->prepare(
+            'INSERT INTO notification_jobs
+             (recipient, user_role, channel, template_key, payload_json, status, next_attempt_at)
+             VALUES (?, ?, ?, ?, ?, "queued", NOW())'
+        );
+        $stmt->execute([
+            substr($recipient, 0, 160),
+            $role,
+            $channel,
+            $templateKey,
+            json_encode($payload, JSON_UNESCAPED_SLASHES),
+        ]);
+    } catch (Throwable $e) {
+        // Queue failures should be visible in logs, but must not break checkout.
+        announce('Notification queue write failed: ' . $e->getMessage());
+    }
+}
+
 // ------ Notification helper --------------------------------
 function pushNotification(string $username, string $message, ?int $orderId = null): void {
     $db = getDB();
@@ -184,4 +236,9 @@ function pushNotification(string $username, string $message, ?int $orderId = nul
         'INSERT INTO notifications (customer_username, order_id, message) VALUES (?, ?, ?)'
     );
     $stmt->execute([$username, $orderId, $message]);
+
+    enqueueNotification($username, 'in_app', 'order_status', [
+        'order_id' => $orderId,
+        'message' => $message,
+    ], 'customer');
 }

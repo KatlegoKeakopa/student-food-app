@@ -3,11 +3,15 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>UB Food App — Admin Panel</title>
+  <title>UB Food — Admin Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     :root{--primary:#1565C0;--primary-dk:#003c8f;--accent:#FF6F00;--success:#2E7D32;--danger:#C62828;--warning:#F57F17;--bg:#F0F2F5;--card:#fff;--text:#212121;--muted:#757575;--border:#E0E0E0;--sidebar-w:240px;}
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+    body{font-family:'Futura PT','Futura Std','Futura','Avenir Next','Avenir','Montserrat','Century Gothic',Arial,sans-serif;font-weight:500;background:var(--bg);color:var(--text);font-size:14px;-webkit-font-smoothing:antialiased;}
+    h1,h2,h3,h4,h5,h6{font-family:'Futura PT','Futura Std','Futura','Avenir Next','Avenir','Montserrat','Century Gothic',Arial,sans-serif;font-weight:800;letter-spacing:-0.01em;}
     .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(140deg,#1a237e,#283593);}
     .auth-box{background:#fff;border-radius:12px;padding:36px 32px;width:360px;box-shadow:0 8px 32px rgba(0,0,0,.25);}
     .auth-logo{text-align:center;font-size:2.5rem;margin-bottom:8px;}
@@ -61,8 +65,15 @@
     tr:hover{background:#FAFAFA;}
     .status-badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:.72rem;font-weight:700;text-transform:uppercase;}
     .status-pending{background:#FFF9C4;color:#F57F17;}
+    .status-pending_vendor{background:#FFF9C4;color:#F57F17;}
+    .status-accepted{background:#E0F2F1;color:#00695C;}
     .status-preparing{background:#E3F2FD;color:#1565C0;}
     .status-ready{background:#E8F5E9;color:#2E7D32;}
+    .status-ready_for_pickup{background:#E8F5E9;color:#2E7D32;}
+    .status-driver_assigned,.status-picked_up{background:#EDE7F6;color:#4527A0;}
+    .status-delivered_pending_confirmation{background:#FFF3E0;color:#E65100;}
+    .status-completed{background:#E8F5E9;color:#1B5E20;}
+    .status-declined_by_vendor{background:#FFEBEE;color:#B71C1C;}
     .status-on_transit{background:#EDE7F6;color:#4527A0;}
     .status-delivered{background:#E8F5E9;color:#1B5E20;}
     .status-cancelled{background:#FFEBEE;color:#B71C1C;}
@@ -113,6 +124,13 @@
       <button class="nav-link" onclick="showSec('staff')"    id="nav-staff">   <span class="icon">🏪</span> Outlet Staff</button>
       <button class="nav-link" onclick="showSec('orders')"   id="nav-orders">  <span class="icon">📋</span> All Orders</button>
       <button class="nav-link" onclick="showSec('ratings')"  id="nav-ratings"> <span class="icon">⭐</span> All Ratings</button>
+      <button class="nav-link" onclick="showSec('support')"  id="nav-support"> <span class="icon">💬</span> Support</button>
+      <button class="nav-link" onclick="showSec('promotions')" id="nav-promotions"><span class="icon">🏷️</span> Promotions</button>
+      <button class="nav-link" onclick="showSec('audit')" id="nav-audit"><span class="icon">🧾</span> Audit Log</button>
+      <button class="nav-link" onclick="showSec('payments')" id="nav-payments"><span class="icon">💳</span> Payments</button>
+      <button class="nav-link" onclick="showSec('dispatch')" id="nav-dispatch"><span class="icon">🛵</span> Dispatch</button>
+      <button class="nav-link" onclick="showSec('onboarding')" id="nav-onboarding"><span class="icon">✅</span> Onboarding</button>
+      <button class="nav-link" onclick="showSec('legal')" id="nav-legal"><span class="icon">⚖️</span> Compliance</button>
     </nav>
     <div class="sb-footer">
       <div class="uinfo" id="sb-uinfo"></div>
@@ -152,7 +170,7 @@
       <div class="card">
         <div style="overflow-x:auto">
           <table>
-            <thead><tr><th>Username</th><th>Name</th><th>Email</th><th>Student ID</th><th>Phone</th><th>Registered</th><th>Action</th></tr></thead>
+            <thead><tr><th>Username</th><th>Name</th><th>Email</th><th>Type</th><th>ID</th><th>Phone</th><th>Registered</th><th>Action</th></tr></thead>
             <tbody id="users-tbody"></tbody>
           </table>
         </div>
@@ -195,11 +213,79 @@
       <div id="all-ratings-content"></div>
     </section>
 
+    <section class="section" id="section-support">
+      <div class="page-title">Support Tickets</div>
+      <div class="page-sub">Recent customer support requests</div>
+      <div class="card"><div style="overflow-x:auto">
+        <table><thead><tr><th>ID</th><th>Customer</th><th>Order</th><th>Subject</th><th>Status</th><th>Created</th></tr></thead><tbody id="support-tbody"></tbody></table>
+      </div></div>
+    </section>
+
+    <section class="section" id="section-promotions">
+      <div class="page-title">Promotions</div>
+      <div class="page-sub">Active and historical promo codes</div>
+      <div class="card"><div style="overflow-x:auto">
+        <table><thead><tr><th>Code</th><th>Description</th><th>Discount</th><th>Min Order</th><th>Active</th><th>Valid Until</th></tr></thead><tbody id="promos-tbody"></tbody></table>
+      </div></div>
+    </section>
+
+    <section class="section" id="section-audit">
+      <div class="page-title">Audit Log</div>
+      <div class="page-sub">Recent security and operational events</div>
+      <div class="card"><div style="overflow-x:auto">
+        <table><thead><tr><th>Actor</th><th>Role</th><th>Action</th><th>Entity</th><th>IP</th><th>Time</th></tr></thead><tbody id="audit-tbody"></tbody></table>
+      </div></div>
+    </section>
+
+    <section class="section" id="section-payments">
+      <div class="page-title">Payments &amp; Refunds</div>
+      <div class="page-sub">Provider ledger, refund history, and reconciliation entries</div>
+      <div class="card"><div class="card-header"><h3>Payment Ledger</h3></div><div style="overflow-x:auto">
+        <table><thead><tr><th>ID</th><th>Order</th><th>Customer</th><th>Provider</th><th>Method</th><th>Amount</th><th>Status</th><th>Paid</th></tr></thead><tbody id="payments-tbody"></tbody></table>
+      </div></div>
+      <div class="card"><div class="card-header"><h3>Refunds</h3></div><div style="overflow-x:auto">
+        <table><thead><tr><th>ID</th><th>Order</th><th>Payment</th><th>Amount</th><th>Reason</th><th>Status</th><th>Created</th></tr></thead><tbody id="refunds-tbody"></tbody></table>
+      </div></div>
+      <div class="card"><div class="card-header"><h3>Reconciliation</h3></div><div style="overflow-x:auto">
+        <table><thead><tr><th>Provider</th><th>Reference</th><th>Order</th><th>Expected</th><th>Settled</th><th>Status</th><th>Created</th></tr></thead><tbody id="recon-tbody"></tbody></table>
+      </div></div>
+    </section>
+
+    <section class="section" id="section-dispatch">
+      <div class="page-title">Live Dispatch</div>
+      <div class="page-sub">Driver assignment, live delivery status, and GPS heartbeat visibility</div>
+      <div class="card"><div style="overflow-x:auto">
+        <table><thead><tr><th>Delivery</th><th>Order</th><th>Customer</th><th>Driver</th><th>Status</th><th>ETA</th><th>Last GPS</th><th>Address</th></tr></thead><tbody id="dispatch-tbody"></tbody></table>
+      </div></div>
+    </section>
+
+    <section class="section" id="section-onboarding">
+      <div class="page-title">Vendor &amp; Driver Onboarding</div>
+      <div class="page-sub">Application review queues and approval actions</div>
+      <div class="card"><div class="card-header"><h3>Vendor Applications</h3></div><div style="overflow-x:auto">
+        <table><thead><tr><th>ID</th><th>Business</th><th>Contact</th><th>Phone</th><th>Location</th><th>Status</th><th>Action</th></tr></thead><tbody id="vendor-apps-tbody"></tbody></table>
+      </div></div>
+      <div class="card"><div class="card-header"><h3>Driver Applications</h3></div><div style="overflow-x:auto">
+        <table><thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Vehicle</th><th>Area</th><th>Status</th><th>Action</th></tr></thead><tbody id="driver-apps-tbody"></tbody></table>
+      </div></div>
+    </section>
+
+    <section class="section" id="section-legal">
+      <div class="page-title">Legal &amp; Compliance</div>
+      <div class="page-sub">Policy versions, consent foundation, and data protection requests</div>
+      <div class="card"><div class="card-header"><h3>Active Legal Documents</h3></div><div style="overflow-x:auto">
+        <table><thead><tr><th>Type</th><th>Version</th><th>Title</th><th>Effective</th><th>URL</th></tr></thead><tbody id="legal-docs-tbody"></tbody></table>
+      </div></div>
+      <div class="card"><div class="card-header"><h3>Data Requests</h3></div><div style="overflow-x:auto">
+        <table><thead><tr><th>ID</th><th>User</th><th>Role</th><th>Type</th><th>Status</th><th>Created</th></tr></thead><tbody id="data-requests-tbody"></tbody></table>
+      </div></div>
+    </section>
+
   </main>
 </div>
 
 <script>
-const API = '../../backend/api';
+const API = window.APP_CONFIG?.apiBase || '../../backend/api';
 let token = sessionStorage.getItem('admin_token') || null;
 let adminUser = JSON.parse(sessionStorage.getItem('admin_user') || 'null');
 let allUsers = [];
@@ -211,9 +297,28 @@ async function req(ep, method='GET', body=null) {
   if (body && method!=='GET') opts.body = JSON.stringify(body);
   try {
     const r = await fetch(`${API}/${ep}`, opts);
+    const ct = r.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      return {
+        ok: false,
+        data: {
+          message: `API returned ${r.status || 'a non-JSON response'}. Serve the app through Apache/PHP and confirm backend/.htaccess plus APP_CONFIG.apiBase.`,
+        },
+      };
+    }
     const d = await r.json();
     return {ok:r.ok, data:d};
-  } catch { return {ok:false, data:{message:'Network error.'}}; }
+  } catch {
+    const isFile = window.location.protocol === 'file:';
+    return {
+      ok: false,
+      data: {
+        message: isFile
+          ? 'The admin app is open as a file. Use http://localhost/student-food-app/frontend/admin/index.html through Apache.'
+          : 'Could not reach the PHP API. Check Apache, backend/.htaccess, and APP_CONFIG.apiBase.',
+      },
+    };
+  }
 }
 
 window.addEventListener('load', () => {
@@ -262,6 +367,13 @@ function showSec(name) {
   if (name==='staff')   loadStaff();
   if (name==='orders')  loadAllOrders();
   if (name==='ratings') loadAllRatings();
+  if (name==='support') loadSupport();
+  if (name==='promotions') loadPromotions();
+  if (name==='audit') loadAudit();
+  if (name==='payments') loadPayments();
+  if (name==='dispatch') loadDispatch();
+  if (name==='onboarding') loadOnboarding();
+  if (name==='legal') loadLegal();
 }
 
 // OVERVIEW
@@ -304,22 +416,23 @@ async function loadOverview() {
 // CUSTOMERS
 async function loadUsers() {
   const tbody = document.getElementById('users-tbody');
-  tbody.innerHTML = '<tr><td colspan="7" style="padding:16px;color:var(--muted)">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8" style="padding:16px;color:var(--muted)">Loading…</td></tr>';
   const res = await req('admin?resource=users');
-  if (!res.ok) { tbody.innerHTML = `<tr><td colspan="7" style="color:red">${res.data.message}</td></tr>`; return; }
+  if (!res.ok) { tbody.innerHTML = `<tr><td colspan="8" style="color:red">${res.data.message}</td></tr>`; return; }
   allUsers = res.data.data.users || [];
   renderUsers(allUsers);
 }
 
 function renderUsers(users) {
   const tbody = document.getElementById('users-tbody');
-  if (!users.length) { tbody.innerHTML = '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--muted)">No customers found.</td></tr>'; return; }
+  if (!users.length) { tbody.innerHTML = '<tr><td colspan="8" style="padding:16px;text-align:center;color:var(--muted)">No customers found.</td></tr>'; return; }
   tbody.innerHTML = users.map(u=>`
     <tr>
       <td class="fw-bold">${escHtml(u.username)}</td>
       <td>${escHtml(u.first_name)} ${escHtml(u.last_name)}</td>
       <td>${escHtml(u.email)}</td>
-      <td class="text-muted">${escHtml(u.student_id||'–')}</td>
+      <td class="text-muted">${escHtml(u.account_type||'student')}</td>
+      <td class="text-muted">${escHtml(u.account_type === 'staff' ? (u.work_id || '–') : (u.student_id || '–'))}</td>
       <td class="text-muted">${escHtml(u.phone||'–')}</td>
       <td class="text-muted">${new Date(u.created_at).toLocaleDateString()}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteUser('${escHtml(u.username)}')">Delete</button></td>
@@ -421,10 +534,207 @@ async function loadAllRatings() {
   if (outlets[0]) showOutletRatings(outlets[0].id);
 }
 
+async function loadSupport() {
+  const tbody = document.getElementById('support-tbody');
+  tbody.innerHTML = '<tr><td colspan="6" style="padding:16px;color:var(--muted)">Loading…</td></tr>';
+  const res = await req('admin?resource=support');
+  if (!res.ok) { tbody.innerHTML = `<tr><td colspan="6" style="color:red">${res.data.message}</td></tr>`; return; }
+  const tickets = res.data.data.tickets || [];
+  tbody.innerHTML = tickets.length ? tickets.map(t => `
+    <tr>
+      <td>#${t.id}</td>
+      <td>${escHtml(t.customer_username || '–')}</td>
+      <td>${t.order_id ? '#' + t.order_id : '–'}</td>
+      <td>${escHtml(t.subject)}</td>
+      <td><span class="status-badge status-${t.status === 'resolved' ? 'delivered' : 'pending'}">${escHtml(t.status)}</span></td>
+      <td class="text-muted">${new Date(t.created_at).toLocaleString()}</td>
+    </tr>`).join('') : '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--muted)">No support tickets.</td></tr>';
+}
+
+async function loadPromotions() {
+  const tbody = document.getElementById('promos-tbody');
+  tbody.innerHTML = '<tr><td colspan="6" style="padding:16px;color:var(--muted)">Loading…</td></tr>';
+  const res = await req('admin?resource=promotions');
+  if (!res.ok) { tbody.innerHTML = `<tr><td colspan="6" style="color:red">${res.data.message}</td></tr>`; return; }
+  const promos = res.data.data.promotions || [];
+  tbody.innerHTML = promos.length ? promos.map(p => `
+    <tr>
+      <td class="fw-bold">${escHtml(p.code)}</td>
+      <td>${escHtml(p.description || '')}</td>
+      <td>${p.discount_type === 'flat' ? 'BWP ' + parseFloat(p.discount_value).toFixed(2) : parseFloat(p.discount_value).toFixed(0) + '%'}</td>
+      <td>${p.min_order_amount ? 'BWP ' + parseFloat(p.min_order_amount).toFixed(2) : '–'}</td>
+      <td>${p.is_active == 1 ? 'Yes' : 'No'}</td>
+      <td class="text-muted">${p.valid_until ? new Date(p.valid_until).toLocaleDateString() : '–'}</td>
+    </tr>`).join('') : '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--muted)">No promotions configured.</td></tr>';
+}
+
+async function loadAudit() {
+  const tbody = document.getElementById('audit-tbody');
+  tbody.innerHTML = '<tr><td colspan="6" style="padding:16px;color:var(--muted)">Loading…</td></tr>';
+  const res = await req('admin?resource=audit');
+  if (!res.ok) { tbody.innerHTML = `<tr><td colspan="6" style="color:red">${res.data.message}</td></tr>`; return; }
+  const rows = res.data.data.audit_logs || [];
+  tbody.innerHTML = rows.length ? rows.map(a => `
+    <tr>
+      <td>${escHtml(a.actor_username || 'system')}</td>
+      <td>${escHtml(a.actor_role || '–')}</td>
+      <td class="fw-bold">${escHtml(a.action)}</td>
+      <td>${escHtml(a.entity_type)} ${a.entity_id ? '#' + escHtml(a.entity_id) : ''}</td>
+      <td class="text-muted">${escHtml(a.ip_address || '–')}</td>
+      <td class="text-muted">${new Date(a.created_at).toLocaleString()}</td>
+    </tr>`).join('') : '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--muted)">No audit events.</td></tr>';
+}
+
+async function loadPayments() {
+  const paymentsBody = document.getElementById('payments-tbody');
+  const refundsBody = document.getElementById('refunds-tbody');
+  const reconBody = document.getElementById('recon-tbody');
+  paymentsBody.innerHTML = refundsBody.innerHTML = reconBody.innerHTML = '<tr><td colspan="8" style="padding:16px;color:var(--muted)">Loading…</td></tr>';
+  const [paymentsRes, refundsRes, reconRes] = await Promise.all([
+    req('admin?resource=payments'),
+    req('admin?resource=refunds'),
+    req('admin?resource=reconciliation'),
+  ]);
+  const payments = paymentsRes.ok ? (paymentsRes.data.data.payments || []) : [];
+  paymentsBody.innerHTML = payments.length ? payments.map(p => `
+    <tr>
+      <td>#${p.id}</td><td>#${p.order_id}</td><td>${escHtml(p.customer_username)}</td>
+      <td>${escHtml(p.provider)}</td><td>${escHtml(p.method)}</td>
+      <td>${p.currency} ${parseFloat(p.amount).toFixed(2)}</td>
+      <td><span class="status-badge status-${p.status === 'paid' ? 'delivered' : 'pending'}">${escHtml(p.status)}</span></td>
+      <td class="text-muted">${p.paid_at ? new Date(p.paid_at).toLocaleString() : '–'}</td>
+    </tr>`).join('') : '<tr><td colspan="8" style="padding:16px;text-align:center;color:var(--muted)">No payments yet.</td></tr>';
+
+  const refunds = refundsRes.ok ? (refundsRes.data.data.refunds || []) : [];
+  refundsBody.innerHTML = refunds.length ? refunds.map(r => `
+    <tr>
+      <td>#${r.id}</td><td>#${r.order_id}</td><td>#${r.payment_id}</td>
+      <td>BWP ${parseFloat(r.amount).toFixed(2)}</td><td>${escHtml(r.reason)}</td>
+      <td><span class="status-badge status-${r.status === 'succeeded' ? 'delivered' : 'pending'}">${escHtml(r.status)}</span></td>
+      <td class="text-muted">${new Date(r.created_at).toLocaleDateString()}</td>
+    </tr>`).join('') : '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--muted)">No refunds yet.</td></tr>';
+
+  const recon = reconRes.ok ? (reconRes.data.data.reconciliation || []) : [];
+  reconBody.innerHTML = recon.length ? recon.map(x => `
+    <tr>
+      <td>${escHtml(x.provider)}</td><td>${escHtml(x.provider_reference)}</td><td>${x.order_id ? '#' + x.order_id : '–'}</td>
+      <td>${x.expected_amount ? parseFloat(x.expected_amount).toFixed(2) : '–'}</td>
+      <td>${x.settled_amount ? parseFloat(x.settled_amount).toFixed(2) : '–'}</td>
+      <td><span class="status-badge status-${x.status === 'matched' ? 'delivered' : 'pending'}">${escHtml(x.status)}</span></td>
+      <td class="text-muted">${new Date(x.created_at).toLocaleDateString()}</td>
+    </tr>`).join('') : '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--muted)">No reconciliation rows yet.</td></tr>';
+}
+
+async function loadDispatch() {
+  const tbody = document.getElementById('dispatch-tbody');
+  tbody.innerHTML = '<tr><td colspan="8" style="padding:16px;color:var(--muted)">Loading…</td></tr>';
+  const res = await req('admin?resource=dispatch');
+  if (!res.ok) { tbody.innerHTML = `<tr><td colspan="8" style="color:red">${res.data.message}</td></tr>`; return; }
+  const rows = res.data.data.deliveries || [];
+  tbody.innerHTML = rows.length ? rows.map(d => `
+    <tr>
+      <td>#${d.id}</td><td>#${d.order_id}</td><td>${escHtml(d.customer_username)}</td>
+      <td>${escHtml(d.driver_name || 'Unassigned')}</td>
+      <td><span class="status-badge status-${d.status === 'delivered' ? 'delivered' : 'pending'}">${escHtml(d.status)}</span></td>
+      <td>${d.eta_minutes ? d.eta_minutes + 'm' : '–'}</td>
+      <td class="text-muted">${d.current_lat && d.current_lng ? `${parseFloat(d.current_lat).toFixed(5)}, ${parseFloat(d.current_lng).toFixed(5)}` : '–'}</td>
+      <td>${escHtml(d.delivery_address || '')}</td>
+    </tr>`).join('') : '<tr><td colspan="8" style="padding:16px;text-align:center;color:var(--muted)">No deliveries yet.</td></tr>';
+}
+
+async function loadOnboarding() {
+  const vendorBody = document.getElementById('vendor-apps-tbody');
+  const driverBody = document.getElementById('driver-apps-tbody');
+  vendorBody.innerHTML = driverBody.innerHTML = '<tr><td colspan="7" style="padding:16px;color:var(--muted)">Loading…</td></tr>';
+  const [vendorsRes, driversRes] = await Promise.all([
+    req('admin?resource=vendor_applications'),
+    req('admin?resource=driver_applications'),
+  ]);
+  const vendors = vendorsRes.ok ? (vendorsRes.data.data.applications || []) : [];
+  vendorBody.innerHTML = vendors.length ? vendors.map(v => `
+    <tr>
+      <td>#${v.id}</td><td>${escHtml(v.trading_name)}<div class="text-muted">${escHtml(v.business_name)}</div></td>
+      <td>${escHtml(v.contact_name)}<div class="text-muted">${escHtml(v.email)}</div></td>
+      <td>${escHtml(v.phone)}</td><td>${escHtml(v.location)}</td>
+      <td><span class="status-badge status-${v.status === 'approved' ? 'delivered' : 'pending'}">${escHtml(v.status)}</span></td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-outline btn-sm" onclick="reviewVendor(${v.id}, 'needs_changes')">Changes</button><button class="btn btn-outline btn-sm" onclick="approveVendor(${v.id})">Approve</button><button class="btn btn-danger btn-sm" onclick="rejectVendor(${v.id})">Reject</button></td>
+    </tr>`).join('') : '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--muted)">No vendor applications.</td></tr>';
+
+  const drivers = driversRes.ok ? (driversRes.data.data.applications || []) : [];
+  driverBody.innerHTML = drivers.length ? drivers.map(d => `
+    <tr>
+      <td>#${d.id}</td><td>${escHtml(d.legal_name)}<div class="text-muted">${escHtml(d.email || '')}</div></td>
+      <td>${escHtml(d.phone)}</td><td>${escHtml(d.vehicle_type || '')}</td><td>${escHtml(d.service_areas || '')}</td>
+      <td><span class="status-badge status-${d.status === 'approved' ? 'delivered' : 'pending'}">${escHtml(d.status)}</span></td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-outline btn-sm" onclick="reviewDriver(${d.id}, 'needs_changes')">Changes</button><button class="btn btn-outline btn-sm" onclick="approveDriver(${d.id})">Approve</button><button class="btn btn-danger btn-sm" onclick="rejectDriver(${d.id})">Reject</button></td>
+    </tr>`).join('') : '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--muted)">No driver applications.</td></tr>';
+}
+
+async function approveVendor(id) {
+  if (!confirm(`Approve vendor application #${id}?`)) return;
+  const res = await req(`admin/vendor-applications/${id}/approve`, 'POST', { notes: 'Approved from admin console.' });
+  alert(res.ok ? `Vendor approved. Outlet #${res.data.data.outlet_id} created inactive.` : res.data.message);
+  loadOnboarding();
+}
+
+async function reviewVendor(id, status) {
+  const notes = prompt('Reviewer notes for vendor application?') || 'Please update the application details.';
+  const res = await req(`admin/vendor-applications/${id}/review`, 'POST', { status, notes });
+  alert(res.ok ? 'Vendor application updated.' : res.data.message);
+  loadOnboarding();
+}
+
+async function rejectVendor(id) {
+  const notes = prompt('Reason for rejecting vendor application?') || 'Application rejected.';
+  const res = await req(`admin/vendor-applications/${id}/reject`, 'POST', { notes });
+  alert(res.ok ? 'Vendor application rejected.' : res.data.message);
+  loadOnboarding();
+}
+
+async function approveDriver(id) {
+  if (!confirm(`Approve driver application #${id}?`)) return;
+  const res = await req(`admin/driver-applications/${id}/approve`, 'POST', { notes: 'Approved from admin console.' });
+  alert(res.ok ? `Driver approved. Driver #${res.data.data.driver_id}. One-time token: ${res.data.data.api_token}` : res.data.message);
+  loadOnboarding();
+}
+
+async function reviewDriver(id, status) {
+  const notes = prompt('Reviewer notes for driver application?') || 'Please update the application details.';
+  const res = await req(`admin/driver-applications/${id}/review`, 'POST', { status, notes });
+  alert(res.ok ? 'Driver application updated.' : res.data.message);
+  loadOnboarding();
+}
+
+async function rejectDriver(id) {
+  const notes = prompt('Reason for rejecting driver application?') || 'Application rejected.';
+  const res = await req(`admin/driver-applications/${id}/reject`, 'POST', { notes });
+  alert(res.ok ? 'Driver application rejected.' : res.data.message);
+  loadOnboarding();
+}
+
+async function loadLegal() {
+  const docsBody = document.getElementById('legal-docs-tbody');
+  const requestsBody = document.getElementById('data-requests-tbody');
+  docsBody.innerHTML = requestsBody.innerHTML = '<tr><td colspan="6" style="padding:16px;color:var(--muted)">Loading…</td></tr>';
+  const res = await req('admin?resource=legal');
+  if (!res.ok) { docsBody.innerHTML = `<tr><td colspan="5" style="color:red">${res.data.message}</td></tr>`; return; }
+  const docs = res.data.data.documents || [];
+  docsBody.innerHTML = docs.map(d => `
+    <tr><td>${escHtml(d.document_type)}</td><td>${escHtml(d.version)}</td><td>${escHtml(d.title)}</td><td>${new Date(d.effective_date).toLocaleDateString()}</td><td class="text-muted">${escHtml(d.content_url)}</td></tr>
+  `).join('');
+  const requests = res.data.data.data_requests || [];
+  requestsBody.innerHTML = requests.length ? requests.map(r => `
+    <tr>
+      <td>#${r.id}</td><td>${escHtml(r.user_identifier)}</td><td>${escHtml(r.user_role)}</td>
+      <td>${escHtml(r.request_type)}</td><td><span class="status-badge status-pending">${escHtml(r.status)}</span></td>
+      <td class="text-muted">${new Date(r.created_at).toLocaleString()}</td>
+    </tr>`).join('') : '<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--muted)">No data requests.</td></tr>';
+}
+
 // UTILS
 function showErr(el,msg){el.textContent=msg;el.style.display='block';}
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function statusLbl(s){return {pending:'Pending',preparing:'Preparing',ready:'Ready',on_transit:'On Transit',delivered:'Delivered',cancelled:'Cancelled'}[s]||s;}
+function statusLbl(s){return {pending_vendor:'Pending Vendor',accepted:'Accepted',preparing:'Preparing',ready_for_pickup:'Ready',driver_assigned:'Driver Assigned',picked_up:'Picked Up',delivered_pending_confirmation:'Delivered - Confirming',completed:'Completed',declined_by_vendor:'Declined',cancelled:'Cancelled'}[s]||s;}
 </script>
 </body>
 </html>

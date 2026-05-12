@@ -38,7 +38,19 @@ INSERT INTO food_outlets (name, description, image_url, cuisine, opening_time, c
  'images/bluwhiteplate.jpg', 'Traditional', '10:00:00', '15:00:00', 1, 1),
 ('Hot Spot Food Court',
  'Burgers, loaded chips, wraps, and ice-cold drinks in a vibrant campus court.',
- 'images/hotspot.jpg', 'Fast Food', '08:00:00', '19:00:00', 1, 1);
+ 'images/hotspot.jpg', 'Fast Food', '08:00:00', '19:00:00', 1, 1),
+('Executive Catering',
+ 'Premium campus catering for events, board lunches, and daily specials. Buffets, platters and à la carte at the Student Centre.',
+ 'images/executive-catering.jpg', 'Continental & Local', '07:30:00', '16:30:00', 1, 1),
+('Moghul Catering',
+ 'Authentic North Indian cuisine — biryani, curries, naan, and tandoori specials prepared fresh daily on campus.',
+ 'images/moghul-catering.jpg', 'Indian', '10:00:00', '18:00:00', 1, 1),
+('Eastern Restaurant',
+ 'Pan-Asian flavours featuring stir-fries, rice boxes, dim sum, and noodle soups made to order at the UB Student Centre.',
+ 'images/eastern-restaurant.jpg', 'Pan-Asian', '09:00:00', '17:30:00', 1, 1),
+('Gaff Kan',
+ 'Popular campus grill serving flame-grilled meats, boerewors rolls, pap & gravy, and ice-cold drinks in a relaxed setting.',
+ 'images/gaff-kan.jpg', 'Grills & Braai', '10:30:00', '19:00:00', 1, 1);
 
 -- ============================================================
 -- FOOD ITEMS (Menu)
@@ -146,7 +158,9 @@ CREATE TABLE customers (
     last_name     VARCHAR(80)  NOT NULL,
     email         VARCHAR(150) NOT NULL UNIQUE,
     phone         VARCHAR(20),
+    account_type  ENUM('student','staff') NOT NULL DEFAULT 'student',
     student_id    VARCHAR(20),
+    work_id       VARCHAR(30),
     status        ENUM('active','disabled','deleted') NOT NULL DEFAULT 'active',
     deleted_at    DATETIME,
     created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -191,13 +205,38 @@ CREATE TABLE favorites (
 
 -- Realistic sample customers  (password: Student@1234)
 -- bcrypt hash of 'Student@1234' at cost 12
-INSERT INTO customers (username, password_hash, first_name, last_name, email, phone, student_id) VALUES
-('tshepo_m',  '$2y$12$Qn5CUfvY8KpW2.sLdJ3FpO7BnWlZ0hX9m4tE6qR1dA8yN2vI5uKeO',
-              'Tshepo',  'Modise',   'tshepo.modise@ub.bw',   '+267 71 234 567', 'UB20210045'),
-('bontle_k',  '$2y$12$Qn5CUfvY8KpW2.sLdJ3FpO7BnWlZ0hX9m4tE6qR1dA8yN2vI5uKeO',
-              'Bontle',  'Kgosi',    'bontle.kgosi@ub.bw',    '+267 72 345 678', 'UB20190112'),
-('kagiso_d',  '$2y$12$Qn5CUfvY8KpW2.sLdJ3FpO7BnWlZ0hX9m4tE6qR1dA8yN2vI5uKeO',
-              'Kagiso',  'Ditsele',  'kagiso.ditsele@ub.bw',  '+267 73 456 789', 'UB20220078');
+-- Original 3 accounts use the schema-seeded hash; 10 new use a freshly generated hash.
+-- New hash for Student@1234: $2y$12$C5J/54ZH8sZRz7h717278e02eFNnNqdryAGtss5Hq7EOBG8dVUaYG
+INSERT INTO customers (username, password_hash, first_name, last_name, email, phone, account_type, student_id, work_id) VALUES
+-- ── Original seed (students) ──────────────────────────────────────────────────
+('tshepo_m', '$2y$12$81csDCWKDWSYmo9jDGyAuuiS5KQANsbpnRjxpYYUNDjb7MEGiD1LO',
+             'Tshepo', 'Modise', 'tshepo.modise@ub.ac.bw', '+267 71 234 567', 'student', 'UB20210045', NULL),
+('bontle_k', '$2y$12$81csDCWKDWSYmo9jDGyAuuiS5KQANsbpnRjxpYYUNDjb7MEGiD1LO',
+             'Bontle', 'Kgosi',  'bontle.kgosi@ub.ac.bw',  '+267 72 345 678', 'student', 'UB20190112', NULL),
+('kagiso_d', '$2y$12$81csDCWKDWSYmo9jDGyAuuiS5KQANsbpnRjxpYYUNDjb7MEGiD1LO',
+             'Kagiso', 'Ditsele','kagiso.ditsele@ub.ac.bw', '+267 73 456 789', 'student', 'UB20220078', NULL),
+-- ── Additional students ───────────────────────────────────────────────────────
+('lesego_b', '$2y$12$C5J/54ZH8sZRz7h717278e02eFNnNqdryAGtss5Hq7EOBG8dVUaYG',
+             'Lesego', 'Bogopa', 'lesego.bogopa@ub.ac.bw', '+267 71 601 001', 'student', 'UB20230101', NULL),
+('keabetswe_n', '$2y$12$C5J/54ZH8sZRz7h717278e02eFNnNqdryAGtss5Hq7EOBG8dVUaYG',
+               'Keabetswe', 'Ntshimologo', 'keabetswe.n@ub.ac.bw', '+267 72 602 002', 'student', 'UB20240078', NULL),
+('refilwe_s', '$2y$12$C5J/54ZH8sZRz7h717278e02eFNnNqdryAGtss5Hq7EOBG8dVUaYG',
+              'Refilwe', 'Sithole', 'refilwe.sithole@ub.ac.bw', '+267 73 603 003', 'student', 'UB20220156', NULL),
+('oarabile_m', '$2y$12$C5J/54ZH8sZRz7h717278e02eFNnNqdryAGtss5Hq7EOBG8dVUaYG',
+               'Oarabile', 'Mokgosi', 'oarabile.mokgosi@ub.ac.bw', '+267 74 604 004', 'student', 'UB20250032', NULL),
+('thato_r', '$2y$12$C5J/54ZH8sZRz7h717278e02eFNnNqdryAGtss5Hq7EOBG8dVUaYG',
+            'Thato', 'Ramoroka', 'thato.ramoroka@ub.ac.bw', '+267 75 605 005', 'student', 'UB20240199', NULL),
+('mpho_d', '$2y$12$C5J/54ZH8sZRz7h717278e02eFNnNqdryAGtss5Hq7EOBG8dVUaYG',
+           'Mpho', 'Dikgole', 'mpho.dikgole@ub.ac.bw', '+267 71 606 006', 'student', 'UB20210309', NULL),
+-- ── Staff members ─────────────────────────────────────────────────────────────
+('dr_seele', '$2y$12$C5J/54ZH8sZRz7h717278e02eFNnNqdryAGtss5Hq7EOBG8dVUaYG',
+             'Boiki', 'Seele', 'b.seele@ub.ac.bw', '+267 72 701 001', 'staff', NULL, 'UB-STAFF-0142'),
+('lect_phiri', '$2y$12$C5J/54ZH8sZRz7h717278e02eFNnNqdryAGtss5Hq7EOBG8dVUaYG',
+               'Grace', 'Phiri', 'g.phiri@ub.ac.bw', '+267 73 702 002', 'staff', NULL, 'UB-STAFF-0278'),
+('admin_support', '$2y$12$C5J/54ZH8sZRz7h717278e02eFNnNqdryAGtss5Hq7EOBG8dVUaYG',
+                  'Moshe', 'Kgomanyane', 'm.kgomanyane@ub.ac.bw', '+267 74 703 003', 'staff', NULL, 'UB-STAFF-0391'),
+('itservices_k', '$2y$12$C5J/54ZH8sZRz7h717278e02eFNnNqdryAGtss5Hq7EOBG8dVUaYG',
+                 'Keitumetse', 'Modiegi', 'k.modiegi@ub.ac.bw', '+267 75 704 004', 'staff', NULL, 'UB-STAFF-0445');
 
 -- ============================================================
 -- OUTLET STAFF
@@ -235,7 +274,7 @@ CREATE TABLE orders (
     customer_username  VARCHAR(50) NOT NULL,
     outlet_id          INT UNSIGNED NOT NULL,
     order_type         ENUM('delivery','pickup') NOT NULL,
-    status             ENUM('pending','preparing','ready','on_transit','delivered','cancelled') NOT NULL DEFAULT 'pending',
+    status             ENUM('pending_vendor','accepted','preparing','ready_for_pickup','driver_assigned','picked_up','delivered_pending_confirmation','completed','declined_by_vendor','cancelled') NOT NULL DEFAULT 'pending_vendor',
     delivery_address   TEXT,
     delivery_lat       DECIMAL(10,7),
     delivery_lng       DECIMAL(10,7),
@@ -341,6 +380,117 @@ CREATE TABLE order_promotions (
 ) ENGINE=InnoDB;
 
 -- ============================================================
+-- PAYMENTS, REFUNDS, PAYOUTS & RECONCILIATION
+-- Provider adapters must never store raw card numbers or CVV.
+-- ============================================================
+CREATE TABLE payment_intents (
+    id                 INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id           INT UNSIGNED NOT NULL,
+    customer_username  VARCHAR(50) NOT NULL,
+    provider           VARCHAR(40) NOT NULL,
+    method             ENUM('card','mobile_money') NOT NULL,
+    provider_reference VARCHAR(120),
+    amount             DECIMAL(10,2) NOT NULL,
+    currency           CHAR(3) NOT NULL DEFAULT 'BWP',
+    status             ENUM('requires_action','pending','succeeded','failed','cancelled','expired') NOT NULL DEFAULT 'pending',
+    checkout_url       VARCHAR(500),
+    mobile_number      VARCHAR(30),
+    idempotency_key    VARCHAR(80),
+    expires_at         DATETIME,
+    created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_pi_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pi_customer FOREIGN KEY (customer_username) REFERENCES customers(username),
+    UNIQUE KEY uq_payment_intent_idempotency (customer_username, idempotency_key)
+) ENGINE=InnoDB;
+
+CREATE TABLE payments (
+    id                 INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id           INT UNSIGNED NOT NULL,
+    payment_intent_id  INT UNSIGNED NOT NULL,
+    provider           VARCHAR(40) NOT NULL,
+    method             ENUM('card','mobile_money') NOT NULL,
+    amount             DECIMAL(10,2) NOT NULL,
+    currency           CHAR(3) NOT NULL DEFAULT 'BWP',
+    status             ENUM('pending','paid','failed','refunded','partially_refunded') NOT NULL DEFAULT 'pending',
+    provider_reference VARCHAR(120),
+    paid_at            DATETIME,
+    created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_payment_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_payment_intent FOREIGN KEY (payment_intent_id) REFERENCES payment_intents(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE payment_events (
+    id                 BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    provider           VARCHAR(40) NOT NULL,
+    provider_event_id  VARCHAR(160),
+    provider_reference VARCHAR(120),
+    event_type         VARCHAR(120) NOT NULL,
+    signature_valid    TINYINT(1) NOT NULL DEFAULT 0,
+    payload_json       JSON,
+    processed_at       DATETIME,
+    created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_payment_provider_event (provider, provider_event_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE refunds (
+    id                 INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id           INT UNSIGNED NOT NULL,
+    payment_id         INT UNSIGNED NOT NULL,
+    amount             DECIMAL(10,2) NOT NULL,
+    reason             VARCHAR(255) NOT NULL,
+    status             ENUM('requested','approved','processing','succeeded','failed','cancelled') NOT NULL DEFAULT 'requested',
+    provider_reference VARCHAR(120),
+    requested_by       VARCHAR(80),
+    approved_by        VARCHAR(80),
+    created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_refund_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_refund_payment FOREIGN KEY (payment_id) REFERENCES payments(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE payout_accounts (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    owner_type      ENUM('vendor','driver') NOT NULL,
+    owner_id        INT UNSIGNED NOT NULL,
+    provider        VARCHAR(40) NOT NULL,
+    account_type    ENUM('bank','mobile_wallet') NOT NULL,
+    account_label   VARCHAR(120) NOT NULL,
+    encrypted_ref   VARBINARY(512) NOT NULL,
+    last4           VARCHAR(8),
+    is_verified     TINYINT(1) NOT NULL DEFAULT 0,
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE payouts (
+    id                 INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    payout_account_id  INT UNSIGNED NOT NULL,
+    amount             DECIMAL(10,2) NOT NULL,
+    currency           CHAR(3) NOT NULL DEFAULT 'BWP',
+    status             ENUM('queued','processing','paid','failed','cancelled') NOT NULL DEFAULT 'queued',
+    provider_reference VARCHAR(120),
+    scheduled_for      DATE,
+    paid_at            DATETIME,
+    created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_payout_account FOREIGN KEY (payout_account_id) REFERENCES payout_accounts(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE reconciliation_entries (
+    id                 BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    provider           VARCHAR(40) NOT NULL,
+    provider_reference VARCHAR(120) NOT NULL,
+    order_id           INT UNSIGNED,
+    expected_amount    DECIMAL(10,2),
+    settled_amount     DECIMAL(10,2),
+    currency           CHAR(3) NOT NULL DEFAULT 'BWP',
+    status             ENUM('matched','mismatch','missing_internal','missing_provider','pending') NOT NULL DEFAULT 'pending',
+    notes              VARCHAR(255),
+    created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_recon_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- ============================================================
 -- SUPPORT TICKETS  (Audit: add ticket_replies)
 -- ============================================================
 CREATE TABLE support_tickets (
@@ -364,6 +514,309 @@ CREATE TABLE ticket_replies (
     message    TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_reply_ticket FOREIGN KEY (ticket_id) REFERENCES support_tickets(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- NOTIFICATION PROVIDER QUEUE, PREFERENCES & DEVICES
+-- ============================================================
+CREATE TABLE notification_templates (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    template_key VARCHAR(80) NOT NULL,
+    channel     ENUM('email','sms','push','in_app') NOT NULL,
+    locale      VARCHAR(12) NOT NULL DEFAULT 'en-BW',
+    subject     VARCHAR(160),
+    body        TEXT NOT NULL,
+    is_active   TINYINT(1) NOT NULL DEFAULT 1,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_template (template_key, channel, locale)
+) ENGINE=InnoDB;
+
+CREATE TABLE notification_jobs (
+    id            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    recipient     VARCHAR(160) NOT NULL,
+    user_role     VARCHAR(30),
+    channel       ENUM('email','sms','push','in_app') NOT NULL,
+    template_key  VARCHAR(80) NOT NULL,
+    payload_json  JSON,
+    status        ENUM('queued','sending','sent','failed','cancelled') NOT NULL DEFAULT 'queued',
+    retry_count   TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    next_attempt_at DATETIME,
+    last_error    VARCHAR(255),
+    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE notification_deliveries (
+    id             BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    job_id         BIGINT UNSIGNED NOT NULL,
+    provider       VARCHAR(40),
+    provider_message_id VARCHAR(160),
+    delivery_status VARCHAR(80) NOT NULL,
+    event_json     JSON,
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_delivery_job FOREIGN KEY (job_id) REFERENCES notification_jobs(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE notification_preferences (
+    id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_role         VARCHAR(30) NOT NULL,
+    user_identifier   VARCHAR(80) NOT NULL,
+    email_enabled     TINYINT(1) NOT NULL DEFAULT 1,
+    sms_enabled       TINYINT(1) NOT NULL DEFAULT 1,
+    push_enabled      TINYINT(1) NOT NULL DEFAULT 1,
+    marketing_enabled TINYINT(1) NOT NULL DEFAULT 0,
+    updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_notification_pref (user_role, user_identifier)
+) ENGINE=InnoDB;
+
+CREATE TABLE device_tokens (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_role       VARCHAR(30) NOT NULL,
+    user_identifier VARCHAR(80) NOT NULL,
+    platform        ENUM('web','android','ios') NOT NULL,
+    token           VARCHAR(255) NOT NULL,
+    last_seen       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_device_token (token)
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- DRIVER DISPATCH & LIVE TRACKING
+-- ============================================================
+CREATE TABLE drivers (
+    id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    application_id INT UNSIGNED,
+    full_name      VARCHAR(160) NOT NULL,
+    phone          VARCHAR(30) NOT NULL,
+    email          VARCHAR(160),
+    vehicle_type   VARCHAR(60),
+    verification_status ENUM('pending','approved','rejected','suspended') NOT NULL DEFAULT 'pending',
+    api_token_hash VARCHAR(255),
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE driver_availability (
+    driver_id       INT UNSIGNED PRIMARY KEY,
+    is_online       TINYINT(1) NOT NULL DEFAULT 0,
+    current_delivery_id INT UNSIGNED,
+    current_lat     DECIMAL(10,7),
+    current_lng     DECIMAL(10,7),
+    last_seen_at    DATETIME,
+    CONSTRAINT fk_avail_driver FOREIGN KEY (driver_id) REFERENCES drivers(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE deliveries (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id        INT UNSIGNED NOT NULL UNIQUE,
+    driver_id       INT UNSIGNED,
+    pickup_address  VARCHAR(255),
+    dropoff_address TEXT,
+    status          ENUM('unassigned','offered','accepted','heading_to_vendor','arrived_vendor','picked_up','heading_to_customer','arrived_customer','delivered','disputed','cancelled') NOT NULL DEFAULT 'unassigned',
+    eta_minutes     SMALLINT UNSIGNED,
+    delivery_pin    VARCHAR(10),
+    assigned_at     DATETIME,
+    picked_up_at    DATETIME,
+    delivered_at    DATETIME,
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_delivery_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_delivery_driver FOREIGN KEY (driver_id) REFERENCES drivers(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE driver_locations (
+    id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    driver_id   INT UNSIGNED NOT NULL,
+    delivery_id INT UNSIGNED,
+    lat         DECIMAL(10,7) NOT NULL,
+    lng         DECIMAL(10,7) NOT NULL,
+    accuracy_m  DECIMAL(8,2),
+    heading     SMALLINT UNSIGNED,
+    speed_mps   DECIMAL(8,2),
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_loc_driver FOREIGN KEY (driver_id) REFERENCES drivers(id) ON DELETE CASCADE,
+    CONSTRAINT fk_loc_delivery FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE dispatch_attempts (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id    INT UNSIGNED NOT NULL,
+    driver_id   INT UNSIGNED NOT NULL,
+    response    ENUM('offered','accepted','rejected','timed_out','cancelled') NOT NULL DEFAULT 'offered',
+    offered_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    responded_at DATETIME,
+    CONSTRAINT fk_attempt_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_attempt_driver FOREIGN KEY (driver_id) REFERENCES drivers(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE proof_of_delivery (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    delivery_id INT UNSIGNED NOT NULL,
+    proof_type  ENUM('pin','photo','signature') NOT NULL,
+    proof_ref   VARCHAR(255) NOT NULL,
+    lat         DECIMAL(10,7),
+    lng         DECIMAL(10,7),
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_pod_delivery FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE driver_earnings (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    driver_id   INT UNSIGNED NOT NULL,
+    delivery_id INT UNSIGNED NOT NULL,
+    delivery_fee DECIMAL(8,2) NOT NULL DEFAULT 0.00,
+    tip_amount   DECIMAL(8,2) NOT NULL DEFAULT 0.00,
+    bonus_amount DECIMAL(8,2) NOT NULL DEFAULT 0.00,
+    payout_status ENUM('unpaid','queued','paid','held') NOT NULL DEFAULT 'unpaid',
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_earn_driver FOREIGN KEY (driver_id) REFERENCES drivers(id),
+    CONSTRAINT fk_earn_delivery FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- LEGAL DOCUMENTS, CONSENT & DATA REQUESTS
+-- ============================================================
+CREATE TABLE legal_documents (
+    id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    document_type  ENUM('privacy_policy','terms','refund_policy','vendor_agreement','driver_agreement','cookie_notice') NOT NULL,
+    version        VARCHAR(40) NOT NULL,
+    title          VARCHAR(160) NOT NULL,
+    content_url    VARCHAR(255) NOT NULL,
+    effective_date DATE NOT NULL,
+    is_active      TINYINT(1) NOT NULL DEFAULT 1,
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_legal_doc (document_type, version)
+) ENGINE=InnoDB;
+
+CREATE TABLE user_consents (
+    id              BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_role       VARCHAR(30) NOT NULL,
+    user_identifier VARCHAR(80) NOT NULL,
+    legal_document_id INT UNSIGNED NOT NULL,
+    accepted_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ip_address      VARCHAR(64),
+    CONSTRAINT fk_consent_doc FOREIGN KEY (legal_document_id) REFERENCES legal_documents(id)
+) ENGINE=InnoDB;
+
+CREATE TABLE data_requests (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_role       VARCHAR(30) NOT NULL,
+    user_identifier VARCHAR(80) NOT NULL,
+    request_type    ENUM('access','delete','export','correction') NOT NULL,
+    status          ENUM('open','in_review','fulfilled','rejected') NOT NULL DEFAULT 'open',
+    notes           TEXT,
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE incidents (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    title       VARCHAR(160) NOT NULL,
+    severity    ENUM('low','medium','high','critical') NOT NULL DEFAULT 'medium',
+    status      ENUM('open','contained','resolved','closed') NOT NULL DEFAULT 'open',
+    description TEXT,
+    created_by  VARCHAR(80),
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- VENDOR & DRIVER APPLICATIONS / COMPLIANCE
+-- ============================================================
+CREATE TABLE vendor_applications (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    business_name   VARCHAR(160) NOT NULL,
+    trading_name    VARCHAR(160) NOT NULL,
+    contact_name    VARCHAR(160) NOT NULL,
+    email           VARCHAR(160) NOT NULL,
+    phone           VARCHAR(30) NOT NULL,
+    location        VARCHAR(255) NOT NULL,
+    cuisine_type    VARCHAR(80),
+    operating_hours VARCHAR(160),
+    service_modes   VARCHAR(80),
+    pickup_available TINYINT(1) NOT NULL DEFAULT 1,
+    delivery_available TINYINT(1) NOT NULL DEFAULT 1,
+    payout_method   VARCHAR(80),
+    licence_number  VARCHAR(80),
+    food_safety_reference VARCHAR(120),
+    document_url    VARCHAR(255),
+    notes           TEXT,
+    status          ENUM('submitted','under_review','needs_changes','approved','rejected','activated') NOT NULL DEFAULT 'submitted',
+    reviewer_notes  TEXT,
+    reviewed_by     VARCHAR(80),
+    reviewed_at     DATETIME,
+    created_outlet_id INT UNSIGNED,
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_vendor_created_outlet FOREIGN KEY (created_outlet_id) REFERENCES food_outlets(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE vendor_application_documents (
+    id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    application_id INT UNSIGNED NOT NULL,
+    document_type  VARCHAR(80) NOT NULL,
+    file_url       VARCHAR(255) NOT NULL,
+    status         ENUM('pending','verified','rejected','expired') NOT NULL DEFAULT 'pending',
+    expires_at     DATE,
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_vendor_doc_app FOREIGN KEY (application_id) REFERENCES vendor_applications(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE vendor_compliance_checks (
+    id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    application_id INT UNSIGNED NOT NULL,
+    check_key      VARCHAR(80) NOT NULL,
+    status         ENUM('pending','passed','failed','waived') NOT NULL DEFAULT 'pending',
+    notes          VARCHAR(255),
+    checked_by     VARCHAR(80),
+    checked_at     DATETIME,
+    CONSTRAINT fk_vendor_check_app FOREIGN KEY (application_id) REFERENCES vendor_applications(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE driver_applications (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    legal_name      VARCHAR(160) NOT NULL,
+    email           VARCHAR(160),
+    phone           VARCHAR(30) NOT NULL,
+    id_number       VARCHAR(80),
+    licence_number  VARCHAR(80),
+    vehicle_type    VARCHAR(60),
+    vehicle_registration VARCHAR(80),
+    emergency_contact VARCHAR(160),
+    service_areas   VARCHAR(255),
+    payout_method   VARCHAR(80),
+    campus_id       VARCHAR(40),
+    identity_reference VARCHAR(120),
+    document_url    VARCHAR(255),
+    notes           TEXT,
+    status          ENUM('submitted','under_review','needs_changes','approved','rejected','activated') NOT NULL DEFAULT 'submitted',
+    reviewer_notes  TEXT,
+    reviewed_by     VARCHAR(80),
+    reviewed_at     DATETIME,
+    created_driver_id INT UNSIGNED,
+    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE driver_application_documents (
+    id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    application_id INT UNSIGNED NOT NULL,
+    document_type  VARCHAR(80) NOT NULL,
+    file_url       VARCHAR(255) NOT NULL,
+    status         ENUM('pending','verified','rejected','expired') NOT NULL DEFAULT 'pending',
+    expires_at     DATE,
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_driver_doc_app FOREIGN KEY (application_id) REFERENCES driver_applications(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE driver_compliance_checks (
+    id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    application_id INT UNSIGNED NOT NULL,
+    check_key      VARCHAR(80) NOT NULL,
+    status         ENUM('pending','passed','failed','waived') NOT NULL DEFAULT 'pending',
+    notes          VARCHAR(255),
+    checked_by     VARCHAR(80),
+    checked_at     DATETIME,
+    CONSTRAINT fk_driver_check_app FOREIGN KEY (application_id) REFERENCES driver_applications(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ============================================================
@@ -403,21 +856,56 @@ CREATE TABLE ssr_log (
 ) ENGINE=InnoDB;
 
 -- ============================================================
--- DEFAULT ADMIN ACCOUNT  (password: Admin@1234)
+-- ADMIN ACCOUNTS
+--   admin        — original account (password hash from schema seed)
+--   ubfood_admin — recommended account  password: Admin@UBFood26
+--     Name: Tebogo Osei-Mensah (UB Food Systems Administrator)
 -- ============================================================
 INSERT INTO admins (username, password_hash, email) VALUES
-('admin', '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin@ub.ac.bw');
+('admin',
+ '$2y$12$pRAgBmF4mK0SMqnnn/cgWe.I64yp0L5uIBLXE/TTOdI2dTt86wJF.',
+ 'admin@ub.ac.bw'),
+('ubfood_admin',
+ '$2y$12$xCRknt3AZmtYyH55vFyRdukhb/kfjPYJSuB/wMCCOpH8pKQo9y7E2',
+ 'ubfood.admin@ub.ac.bw');
 
 -- ============================================================
--- OUTLET STAFF  (password: Staff@1234)
+-- OUTLET STAFF
+--   Original accounts  password: Staff@1234
+--   New accounts       password: Vendor@1234
+--   Vendor hash: $2y$12$tX/2NoFD.zS.vg8nF24/2e3k5JR0HZAdcgdZtpA2c9d8SFPmGc2bq
 -- ============================================================
 INSERT INTO outlet_staff (username, password_hash, first_name, last_name, email, outlet_id, role) VALUES
-('sefalana_staff', '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
-                   'Lesego', 'Dube',    'sefalana@ub.ac.bw',  1, 'staff'),
-('bwp_manager',    '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
-                   'Kagiso', 'Molefe',  'bwp@ub.ac.bw',       2, 'manager'),
-('hotspot_staff',  '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
-                   'Mpho',   'Sithole', 'hotspot@ub.ac.bw',   3, 'staff');
+-- ── Original staff (outlets 1-3) ───────────────────────────
+('sefalana_staff', '$2y$12$.ltc52bPvskGnfQA8s4s9ObT9zsqSkz42US0R7IpetngbxH/Tsanm',
+                   'Lesego',    'Dube',       'sefalana@ub.ac.bw',           1, 'staff'),
+('bwp_manager',    '$2y$12$.ltc52bPvskGnfQA8s4s9ObT9zsqSkz42US0R7IpetngbxH/Tsanm',
+                   'Kagiso',    'Molefe',     'bwp@ub.ac.bw',                2, 'manager'),
+('hotspot_staff',  '$2y$12$.ltc52bPvskGnfQA8s4s9ObT9zsqSkz42US0R7IpetngbxH/Tsanm',
+                   'Mpho',      'Sithole',    'hotspot@ub.ac.bw',            3, 'staff'),
+-- ── Sefalana — new manager ──────────────────────────────────
+('sefalana_mgr',   '$2y$12$tX/2NoFD.zS.vg8nF24/2e3k5JR0HZAdcgdZtpA2c9d8SFPmGc2bq',
+                   'Onkemetse', 'Seleka',     'onkemetse.seleka@sefalana.ub.ac.bw', 1, 'manager'),
+-- ── Executive Catering (outlet 4) ──────────────────────────
+('exec_catering_mgr',   '$2y$12$tX/2NoFD.zS.vg8nF24/2e3k5JR0HZAdcgdZtpA2c9d8SFPmGc2bq',
+                         'Dineo',    'Tau',        'dineo.tau@executive.ub.ac.bw',   4, 'manager'),
+('exec_catering_staff', '$2y$12$tX/2NoFD.zS.vg8nF24/2e3k5JR0HZAdcgdZtpA2c9d8SFPmGc2bq',
+                         'Thapelo',  'Mosweu',     'thapelo.mosweu@executive.ub.ac.bw', 4, 'staff'),
+-- ── Moghul Catering (outlet 5) ─────────────────────────────
+('moghul_mgr',     '$2y$12$tX/2NoFD.zS.vg8nF24/2e3k5JR0HZAdcgdZtpA2c9d8SFPmGc2bq',
+                   'Ranjit',    'Singh',      'ranjit.singh@moghul.ub.ac.bw',   5, 'manager'),
+('moghul_staff',   '$2y$12$tX/2NoFD.zS.vg8nF24/2e3k5JR0HZAdcgdZtpA2c9d8SFPmGc2bq',
+                   'Priya',     'Naidoo',     'priya.naidoo@moghul.ub.ac.bw',   5, 'staff'),
+-- ── Eastern Restaurant (outlet 6) ──────────────────────────
+('eastern_mgr',    '$2y$12$tX/2NoFD.zS.vg8nF24/2e3k5JR0HZAdcgdZtpA2c9d8SFPmGc2bq',
+                   'Wei',       'Zhang',      'wei.zhang@eastern.ub.ac.bw',     6, 'manager'),
+('eastern_staff',  '$2y$12$tX/2NoFD.zS.vg8nF24/2e3k5JR0HZAdcgdZtpA2c9d8SFPmGc2bq',
+                   'Mei',       'Lim',        'mei.lim@eastern.ub.ac.bw',       6, 'staff'),
+-- ── Gaff Kan (outlet 7) ─────────────────────────────────────
+('gaffkan_mgr',    '$2y$12$tX/2NoFD.zS.vg8nF24/2e3k5JR0HZAdcgdZtpA2c9d8SFPmGc2bq',
+                   'Boitumelo', 'Kgaswane',   'boitumelo.kgaswane@gaffkan.ub.ac.bw', 7, 'manager'),
+('gaffkan_staff',  '$2y$12$tX/2NoFD.zS.vg8nF24/2e3k5JR0HZAdcgdZtpA2c9d8SFPmGc2bq',
+                   'Kenanao',   'Ramotse',    'kenanao.ramotse@gaffkan.ub.ac.bw',    7, 'staff');
 
 -- ============================================================
 -- PRE-SEEDED ORDERS (realistic demo data)
@@ -427,10 +915,10 @@ INSERT INTO orders
    delivery_address, delivery_fee, tip_amount, total_amount,
    payment_method, payment_status, created_at)
 VALUES
-(1, 'tshepo_m',  3, 'delivery', 'delivered',
+(1, 'tshepo_m',  3, 'delivery', 'completed',
    'Main Campus Block A, Room 12', 5.00, 0.00, 123.00,
    'cash_on_delivery', 'not_required', DATE_SUB(NOW(), INTERVAL 2 DAY)),
-(2, 'bontle_k',  1, 'delivery', 'on_transit',
+(2, 'bontle_k',  1, 'delivery', 'picked_up',
    'Library Block, 2nd Floor',     5.00, 0.00, 79.00,
    'cash_on_delivery', 'not_required', DATE_SUB(NOW(), INTERVAL 1 HOUR)),
 (3, 'kagiso_d',  2, 'pickup',   'preparing',
@@ -454,17 +942,51 @@ INSERT INTO order_items (order_id, food_item_id, item_name, quantity, unit_price
 
 -- Status history for seeded orders
 INSERT INTO order_status_history (order_id, from_status, to_status, actor_username, actor_role, note) VALUES
-(1, NULL,         'pending',    'tshepo_m',      'customer', 'Order placed'),
-(1, 'pending',    'preparing',  'hotspot_staff', 'staff',    'Accepted'),
-(1, 'preparing',  'ready',      'hotspot_staff', 'staff',    'Ready for collection'),
-(1, 'ready',      'on_transit', 'hotspot_staff', 'staff',    'Picked up by rider'),
-(1, 'on_transit', 'delivered',  'hotspot_staff', 'staff',    'Delivered'),
-(2, NULL,         'pending',    'bontle_k',      'customer', 'Order placed'),
-(2, 'pending',    'preparing',  'sefalana_staff','staff',    'Accepted'),
-(2, 'preparing',  'ready',      'sefalana_staff','staff',    'Ready'),
-(2, 'ready',      'on_transit', 'sefalana_staff','staff',    'Out for delivery'),
-(3, NULL,         'pending',    'kagiso_d',      'customer', 'Order placed'),
-(3, 'pending',    'preparing',  'bwp_manager',   'staff',    'Accepted');
+(1, NULL,         'pending_vendor', 'tshepo_m',      'customer', 'Order placed'),
+(1, 'pending_vendor', 'accepted',   'hotspot_staff', 'staff',    'Accepted'),
+(1, 'accepted',   'preparing',      'hotspot_staff', 'staff',    'Preparing'),
+(1, 'preparing',  'ready_for_pickup','hotspot_staff','staff',    'Ready for collection'),
+(1, 'ready_for_pickup','picked_up', 'hotspot_staff', 'staff',    'Picked up by rider'),
+(1, 'picked_up',  'completed',      'tshepo_m',      'customer', 'Customer confirmed receipt'),
+(2, NULL,         'pending_vendor', 'bontle_k',      'customer', 'Order placed'),
+(2, 'pending_vendor', 'accepted',   'sefalana_staff','staff',    'Accepted'),
+(2, 'accepted',   'preparing',      'sefalana_staff','staff',    'Preparing'),
+(2, 'preparing',  'ready_for_pickup','sefalana_staff','staff',   'Ready'),
+(2, 'ready_for_pickup','picked_up', 'sefalana_staff','staff',    'Out for delivery'),
+(3, NULL,         'pending_vendor', 'kagiso_d',      'customer', 'Order placed'),
+(3, 'pending_vendor', 'accepted',   'bwp_manager',   'staff',    'Accepted'),
+(3, 'accepted',   'preparing',      'bwp_manager',   'staff',    'Preparing');
+
+-- ============================================================
+-- SEEDED DRIVERS (5 approved drivers)
+--   api_token_hash stores bcrypt of  Driver@1234
+--   Real one-time token issued via admin panel after approval.
+-- ============================================================
+INSERT INTO drivers
+  (id, full_name, phone, email, vehicle_type, verification_status, api_token_hash)
+VALUES
+(1, 'Goitsemang Tshosa',  '+267 72 101 001', 'goitsemang.tshosa@driver.ubfood.bw',
+    'bicycle',    'approved',
+    '$2y$12$4Vj7.ymj6V80sYaxkh8RLeTmuRnbXmMLgg63Yh/tyX8KVPeQV3iZy'),
+(2, 'Mpho Sebego',        '+267 73 202 002', 'mpho.sebego@driver.ubfood.bw',
+    'scooter',    'approved',
+    '$2y$12$4Vj7.ymj6V80sYaxkh8RLeTmuRnbXmMLgg63Yh/tyX8KVPeQV3iZy'),
+(3, 'Tshepiso Molefe',    '+267 74 303 003', 'tshepiso.molefe@driver.ubfood.bw',
+    'motorcycle', 'approved',
+    '$2y$12$4Vj7.ymj6V80sYaxkh8RLeTmuRnbXmMLgg63Yh/tyX8KVPeQV3iZy'),
+(4, 'Kelebogile Sento',   '+267 75 404 004', 'kelebogile.sento@driver.ubfood.bw',
+    'car',        'approved',
+    '$2y$12$4Vj7.ymj6V80sYaxkh8RLeTmuRnbXmMLgg63Yh/tyX8KVPeQV3iZy'),
+(5, 'Neo Ditsele',        '+267 71 505 005', 'neo.ditsele@driver.ubfood.bw',
+    'walking',    'approved',
+    '$2y$12$4Vj7.ymj6V80sYaxkh8RLeTmuRnbXmMLgg63Yh/tyX8KVPeQV3iZy');
+
+INSERT INTO driver_availability (driver_id, is_online, current_lat, current_lng) VALUES
+(1, 0, -24.6617, 25.9326),
+(2, 0, -24.6617, 25.9326),
+(3, 0, -24.6617, 25.9326),
+(4, 0, -24.6617, 25.9326),
+(5, 0, -24.6617, 25.9326);
 
 -- Notifications for seeded customers
 INSERT INTO notifications (customer_username, order_id, message, is_read) VALUES
@@ -478,6 +1000,21 @@ INSERT INTO promotions (code, description, discount_type, discount_value, min_or
 VALUES ('UBFOOD20', 'P20.00 off your first order — UB Student Centre launch offer.',
         'flat', 20.00, 30.00, 500, 1,
         DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 90 DAY), 1);
+
+INSERT INTO legal_documents (document_type, version, title, content_url, effective_date, is_active) VALUES
+('privacy_policy', '2026.05', 'Privacy Policy', '/legal/privacy-policy-2026-05.html', CURDATE(), 1),
+('terms', '2026.05', 'Terms of Service', '/legal/terms-2026-05.html', CURDATE(), 1),
+('refund_policy', '2026.05', 'Refund and Cancellation Policy', '/legal/refund-policy-2026-05.html', CURDATE(), 1),
+('vendor_agreement', '2026.05', 'Vendor Agreement', '/legal/vendor-agreement-2026-05.html', CURDATE(), 1),
+('driver_agreement', '2026.05', 'Driver Agreement', '/legal/driver-agreement-2026-05.html', CURDATE(), 1);
+
+INSERT INTO notification_templates (template_key, channel, subject, body) VALUES
+('order_placed', 'email', 'Your UB Food order was placed', 'Order {{order_id}} was placed successfully.'),
+('order_status', 'sms', NULL, 'UB Food order {{order_id}} is now {{status}}.'),
+('driver_assigned', 'push', 'Driver assigned', 'Your driver is on the way to collect order {{order_id}}.'),
+('payment_receipt', 'email', 'Payment receipt', 'We received BWP {{amount}} for order {{order_id}}.'),
+('vendor_application_received', 'email', 'Vendor application received', 'Vendor application {{application_id}} has been received for review.'),
+('driver_application_received', 'sms', NULL, 'UB Food received driver application {{application_id}} for review.');
 
 -- ============================================================
 -- INDEXES for query performance
@@ -496,3 +1033,17 @@ CREATE INDEX idx_auth_attempts_lookup    ON auth_attempts(username, role, ip_add
 CREATE INDEX idx_audit_logs_entity       ON audit_logs(entity_type, entity_id, created_at);
 CREATE INDEX idx_order_promotions_order  ON order_promotions(order_id);
 CREATE INDEX idx_ssr_log_ts              ON ssr_log(created_at);
+CREATE INDEX idx_payment_intents_order   ON payment_intents(order_id, status);
+CREATE INDEX idx_payments_order          ON payments(order_id, status);
+CREATE INDEX idx_payment_events_ref      ON payment_events(provider, provider_reference);
+CREATE INDEX idx_refunds_order           ON refunds(order_id, status);
+CREATE INDEX idx_notification_jobs_due   ON notification_jobs(status, next_attempt_at);
+CREATE INDEX idx_device_tokens_user      ON device_tokens(user_role, user_identifier);
+CREATE INDEX idx_deliveries_order        ON deliveries(order_id, status);
+CREATE INDEX idx_driver_locations_latest ON driver_locations(driver_id, created_at);
+CREATE INDEX idx_dispatch_attempts_order ON dispatch_attempts(order_id, response);
+CREATE INDEX idx_user_consents_user      ON user_consents(user_role, user_identifier);
+CREATE INDEX idx_data_requests_user      ON data_requests(user_role, user_identifier, status);
+CREATE INDEX idx_vendor_app_status       ON vendor_applications(status, created_at);
+CREATE INDEX idx_driver_app_status       ON driver_applications(status, created_at);
+

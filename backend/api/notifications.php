@@ -1,6 +1,8 @@
 <?php
-// GET   /api/notifications – customer's unread notifications
-// PATCH /api/notifications – mark all as read
+// GET   /api/notifications             – customer's notifications
+// PATCH /api/notifications             – mark all as read
+// GET   /api/notifications/preferences – current user's preferences
+// PATCH /api/notifications/preferences – update preferences
 
 require_once __DIR__ . '/../includes/helpers.php';
 
@@ -10,6 +12,49 @@ handlePreflight();
 $db     = getDB();
 $method = $_SERVER['REQUEST_METHOD'];
 $user   = requireAuth(['customer']);
+$isPreferences = preg_match('#/notifications/preferences#', $_SERVER['REQUEST_URI']) === 1;
+
+if ($isPreferences) {
+    if ($method === 'GET') {
+        $stmt = $db->prepare(
+            'SELECT email_enabled, sms_enabled, push_enabled, marketing_enabled, updated_at
+             FROM notification_preferences
+             WHERE user_role = ? AND user_identifier = ?'
+        );
+        $stmt->execute([$user['role'], $user['sub']]);
+        $prefs = $stmt->fetch() ?: [
+            'email_enabled' => 1,
+            'sms_enabled' => 1,
+            'push_enabled' => 1,
+            'marketing_enabled' => 0,
+            'updated_at' => null,
+        ];
+        success(['preferences' => $prefs]);
+    }
+
+    if ($method === 'PATCH') {
+        $body = getBody();
+        $email = !empty($body['email_enabled']) ? 1 : 0;
+        $sms = !empty($body['sms_enabled']) ? 1 : 0;
+        $push = !empty($body['push_enabled']) ? 1 : 0;
+        $marketing = !empty($body['marketing_enabled']) ? 1 : 0;
+        $stmt = $db->prepare(
+            'INSERT INTO notification_preferences
+             (user_role, user_identifier, email_enabled, sms_enabled, push_enabled, marketing_enabled)
+             VALUES (?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                email_enabled = VALUES(email_enabled),
+                sms_enabled = VALUES(sms_enabled),
+                push_enabled = VALUES(push_enabled),
+                marketing_enabled = VALUES(marketing_enabled)'
+        );
+        $stmt->execute([$user['role'], $user['sub'], $email, $sms, $push, $marketing]);
+        auditLog($user['sub'], $user['role'], 'update_notification_preferences', 'customer', $user['sub']);
+        success([], 'Notification preferences updated.');
+    }
+
+    error('Method not allowed.', 405);
+}
 
 if ($method === 'GET') {
     $stmt = $db->prepare(

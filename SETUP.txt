@@ -9,14 +9,15 @@ REQUIREMENTS
 • MySQL 5.7+ or MariaDB 10.3+
 • Apache with mod_rewrite enabled (WAMP, XAMPP, or live server)
 • A Google Maps API key (for customer delivery tracking)
+• Composer is optional but recommended for worker scripts
 
 
 STEP 1 — DATABASE SETUP
 ------------------------
 1. Open phpMyAdmin (or your MySQL client).
 2. Import database/schema.sql — this creates the database,
-   all 9 tables, sample data (outlets, menu items), and
-   default accounts.
+   application tables, realistic sample data, and default
+   demo accounts.
 
 Default login credentials (all use same password format):
   Admin     : username=admin         password=Admin@1234
@@ -38,7 +39,9 @@ Copy .env.example to .env in the project root and set:
   DB_HOST, DB_USER, DB_PASS, DB_NAME
   JWT_SECRET       — use at least 32 random characters
   CORS_ALLOWED_ORIGINS — comma-separated allowed frontend origins
+  PAYMENT_PROVIDER=sandbox for local testing
   PAYMENT_PROVIDER_ENABLED=false until a real gateway is integrated
+  EMAIL_PROVIDER, SMS_PROVIDER, PUSH_PROVIDER keys before production
 
 Do not commit real .env values or production secrets.
 
@@ -61,10 +64,13 @@ The frontend pages use relative paths to reach the backend.
 If you serve the entire project from your web root (e.g.
 C:\wamp\www\student-food-app\), the relative paths work as-is.
 
-If deploying to a subfolder, update the API_BASE variable in:
-  frontend/customer/js/api.js   (const API_BASE = ...)
-  frontend/dashboard/index.html (const API = ...)
-  frontend/admin/index.html     (const API = ...)
+The default API base is ../../backend/api from each frontend page.
+This works when the project is served through Apache as:
+  http://localhost/student-food-app/frontend/...
+
+If deploying elsewhere, set window.APP_CONFIG.apiBase before the
+frontend scripts load. Do not open the app with file:// because PHP
+and backend/.htaccess routing will not run.
 
 
 STEP 5 — APACHE / MOD_REWRITE
@@ -72,6 +78,18 @@ STEP 5 — APACHE / MOD_REWRITE
 backend/.htaccess handles URL routing for the PHP API.
 Ensure AllowOverride All is set in your Apache config.
 On WAMP: click WAMP tray → Apache → Apache modules → rewrite_module.
+
+
+STEP 6 — BACKGROUND WORKER
+---------------------------
+Run the DB-backed notification worker from cron, Supervisor, or
+your deployment platform:
+
+  composer run worker:notifications
+
+In development it records sandbox deliveries. In production, replace
+the sandbox branch in backend/workers/notification_worker.php with
+SendGrid/Mailgun/SES, Orange/Twilio/Infobip SMS, and FCM/APNs adapters.
 
 
 ACCESSING THE SYSTEM
@@ -84,6 +102,9 @@ Outlet Staff Dashboard:
 
 Admin Panel:
   http://localhost/student-food-app/frontend/admin/index.html
+
+Driver Dashboard:
+  http://localhost/student-food-app/frontend/driver/index.html
 
 
 SYSTEM OVERVIEW
@@ -98,10 +119,19 @@ The application consists of:
   backend/api/outlets.php      — List/get food outlets with ratings
   backend/api/menu.php         — Get menu items (with category filter)
   backend/api/orders.php       — Place, view, update, cancel orders
+  backend/api/payments.php     — Payment intents, sandbox confirmation, webhooks
+  backend/api/refunds.php      — Admin refund ledger/workflow
+  backend/api/dispatch.php     — Driver assignment and customer tracking
+  backend/api/drivers.php      — Driver availability, GPS, earnings
+  backend/api/legal.php        — Legal documents, consent, data requests
+  backend/api/vendor_applications.php — Vendor onboarding workflow
+  backend/api/driver_applications.php — Driver onboarding workflow
   backend/api/ratings.php      — Submit and view customer ratings
-  backend/api/notifications.php— Customer push notifications
-  backend/api/admin.php        — Admin: users, staff, reports
+  backend/api/notifications.php— Customer notifications and preferences
+  backend/api/devices.php      — Push device registration
+  backend/api/admin.php        — Admin: users, staff, reports, ops ledgers
   backend/api/menu_manage.php  — Staff: add/edit/toggle menu items
+  backend/workers/notification_worker.php — DB-backed notification queue
   backend/.htaccess            — Apache URL routing
 
   frontend/customer/index.html — Single-page customer mobile web app
@@ -109,23 +139,54 @@ The application consists of:
   frontend/customer/js/api.js  — API client for customer app
   frontend/dashboard/index.html— Outlet staff dashboard (SPA)
   frontend/admin/index.html    — Admin panel (SPA)
+  frontend/driver/index.html   — Driver dispatch dashboard (SPA)
 
 
 ORDER STATUS FLOW
 ------------------
-  pending → preparing → ready → on_transit → delivered
-                                           ↘ cancelled
+  pending_vendor → accepted → preparing → ready_for_pickup
+        ↘ declined_by_vendor              ↓
+                                driver_assigned → picked_up
+                                                  ↓
+                                delivered_pending_confirmation
+                                                  ↓
+                                             completed
 
-Customers can cancel orders that are still "pending".
-Staff update status through the dashboard (View → Update Status).
-Customers receive automatic notifications at each status change.
+Customers can cancel only while the order is waiting for vendor
+confirmation. Vendors explicitly accept or decline each order.
+Drivers can accept deliveries only when approved, online, and not
+already assigned to an active delivery. Delivery completion requires
+customer receipt confirmation before the driver becomes available again.
+
+If you previously imported the database, run:
+  database/migrations/2026_05_marketplace_lifecycle.sql
+
+Fresh installations only need database/schema.sql.
+
+COMMON API 404 FIX
+-------------------
+If the frontend shows:
+  API returned 404. Check that Apache is serving backend/.htaccess
+  routes and API_BASE is correct
+
+Open the app through Apache, not file:// or a static server:
+  http://localhost/student-food-app/frontend/customer/index.html
+
+Then confirm:
+  - Apache mod_rewrite is enabled
+  - AllowOverride All is set for the project directory
+  - backend/.htaccess is present
+  - window.APP_CONFIG.apiBase resolves to ../../backend/api or an
+    absolute URL for your deployment
 
 
 FEATURES IMPLEMENTED
 ---------------------
 Customer App:
   ✅ Signup with validation
+  ✅ Student/staff signup with required student/work ID
   ✅ Login / Logout
+  ✅ Uber Eats-inspired UB campus landing page
   ✅ Browse food outlets with star ratings
   ✅ Favorite outlets
   ✅ Browse menu by category with item images
@@ -139,6 +200,10 @@ Customer App:
   ✅ Cancel pending orders
   ✅ Rate and review delivered orders (1–5 stars)
   ✅ In-app notifications with unread badge
+  ✅ Notification preferences and privacy requests
+  ✅ Card/mobile-money sandbox payment recovery flow
+  ✅ Delivery tracking timeline, driver/PIN visibility, and receipt confirmation
+  ✅ Landing-page vendor and driver application forms
   ✅ Profile page
 
 Outlet Staff Dashboard:
@@ -146,11 +211,13 @@ Outlet Staff Dashboard:
   ✅ Live order board with status filters
   ✅ Order stats (pending/preparing/ready/transit counts)
   ✅ Order detail modal with full item list
-  ✅ Update order status (triggers customer notification)
+  ✅ Accept/decline vendor workflow with customer notifications
+  ✅ Ready-for-pickup and delivery visibility
   ✅ View ratings & reviews for their outlet
   ✅ Menu management: view, add, toggle availability
   ✅ Menu metadata for dietary tags, allergens, stock, prep time (API/schema)
   ✅ Outlet revenue and delivery/pickup reports
+  ✅ Settlement/readiness view with paid and pending payment status
 
 Admin Panel:
   ✅ System-wide overview with revenue across all outlets
@@ -161,10 +228,22 @@ Admin Panel:
   ✅ Outlet staff directory
   ✅ All orders system-wide (latest 500)
   ✅ All ratings per outlet (tabbed view)
+  ✅ Payment, refund, reconciliation ledgers
+  ✅ Live dispatch visibility
+  ✅ Vendor and driver application review/approval queues
+  ✅ Legal documents and data request queue
 
-NOT IMPLEMENTED (as per documentation scope):
-  ✗ Online payment gateway settlement (schema/API guardrails are present, provider integration still required)
+Driver Dashboard:
+  ✅ Driver token login
+  ✅ Online/offline availability
+  ✅ Available delivery offers
+  ✅ Accept/reject delivery
+  ✅ Pickup and delivered status updates
+  ✅ Earnings summary
+
+PRODUCTION INTEGRATION STILL REQUIRED:
+  ✗ Real provider credentials and live settlement adapters
   ✗ Native Android APK compilation
-  ✗ Email/SMS/push provider delivery (notification abstraction still stores in-app notifications)
+  ✗ Full legal review by Botswana-qualified counsel
   ✗ Full WCAG certification (focus, touch-target, and live-region basics have been improved)
 ============================================================

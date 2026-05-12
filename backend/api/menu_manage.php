@@ -25,7 +25,8 @@ if ($method === 'GET') {
     $outletId = $user['role'] === 'staff' ? (int)$user['outlet_id'] : (int)($_GET['outlet_id'] ?? 0);
     if (!$outletId) error('outlet_id required.');
     $stmt = $db->prepare(
-        'SELECT id, name, description, price, image_url, category, is_available
+        'SELECT id, name, description, price, image_url, category, dietary_tags, allergen_tags,
+                stock_qty, prep_minutes, is_available
          FROM food_items WHERE outlet_id = ? ORDER BY category, name'
     );
     $stmt->execute([$outletId]);

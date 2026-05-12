@@ -4,7 +4,7 @@
 // GET  /api/orders?outlet_id=n  – outlet's orders (staff)
 // GET  /api/orders/{id}         – single order detail
 // PATCH /api/orders/{id}        – update order status (staff)
-// DELETE /api/orders/{id}       – cancel order (customer, only if pending)
+// DELETE /api/orders/{id}       – cancel order (customer, only if pending_vendor)
 
 require_once __DIR__ . '/../includes/helpers.php';
 
@@ -20,8 +20,111 @@ if (preg_match('/\/orders\/(\d+)/', $_SERVER['REQUEST_URI'], $m)) {
     $orderId = (int)$m[1];
 }
 
+function addOrderHistory(PDO $db, int $orderId, ?string $from, string $to, string $actor, string $role, ?string $note = null): void {
+    $db->prepare(
+        'INSERT INTO order_status_history (order_id, from_status, to_status, actor_username, actor_role, note)
+         VALUES (?, ?, ?, ?, ?, ?)'
+    )->execute([$orderId, $from, $to, $actor, $role, $note]);
+}
+
+function loadOrderForAction(PDO $db, int $orderId): array {
+    $stmt = $db->prepare(
+        'SELECT o.*, fo.name AS outlet_name
+         FROM orders o JOIN food_outlets fo ON fo.id = o.outlet_id
+         WHERE o.id = ?'
+    );
+    $stmt->execute([$orderId]);
+    $order = $stmt->fetch();
+    if (!$order) error('Order not found.', 404);
+    return $order;
+}
+
+// ---- POST: vendor accepts / declines, customer confirms receipt --------
+if ($method === 'POST' && $orderId && preg_match('#/orders/\d+/(vendor/accept|vendor/decline|confirm-received)$#', $_SERVER['REQUEST_URI'], $route)) {
+    $action = $route[1];
+    $body = getBody();
+    $order = loadOrderForAction($db, $orderId);
+
+    if ($action === 'vendor/accept' || $action === 'vendor/decline') {
+        $user = requireAuth(['staff', 'admin']);
+        if ($user['role'] === 'staff' && (int)$order['outlet_id'] !== (int)$user['outlet_id']) {
+            error('Forbidden: this order belongs to a different outlet.', 403);
+        }
+        if ($order['status'] !== 'pending_vendor') {
+            error('Only pending vendor orders can be accepted or declined.', 409);
+        }
+        if (in_array($order['payment_method'], ['card','mobile_money'], true) && $order['payment_status'] !== 'paid') {
+            error('Online payment must be completed before accepting this order.', 409);
+        }
+
+        $newStatus = $action === 'vendor/accept' ? 'accepted' : 'declined_by_vendor';
+        $reason = $action === 'vendor/decline'
+            ? trim((string)($body['reason'] ?? 'Vendor declined the order.'))
+            : null;
+
+        $db->beginTransaction();
+        try {
+            $db->prepare('UPDATE orders SET status = ?, cancellation_reason = COALESCE(?, cancellation_reason) WHERE id = ?')
+               ->execute([$newStatus, $reason, $orderId]);
+            addOrderHistory($db, $orderId, $order['status'], $newStatus, $user['sub'], $user['role'], $reason);
+            if ($newStatus === 'accepted' && $order['order_type'] === 'delivery') {
+                $db->prepare(
+                    'INSERT INTO deliveries (order_id, dropoff_address, status, eta_minutes, delivery_pin)
+                     VALUES (?, ?, "unassigned", 30, ?)
+                     ON DUPLICATE KEY UPDATE status = IF(status = "cancelled", "unassigned", status)'
+                )->execute([$orderId, $order['delivery_address'], (string)random_int(1000, 9999)]);
+            }
+            $db->commit();
+        } catch (Throwable $e) {
+            $db->rollBack();
+            error('Could not update vendor decision.', 500);
+        }
+
+        if ($newStatus === 'accepted') {
+            pushNotification($order['customer_username'], "Your order #{$orderId} was accepted by {$order['outlet_name']}.", $orderId);
+            enqueueNotification('approved_drivers', 'push', 'driver_assigned', ['order_id' => $orderId], 'driver');
+            auditLog($user['sub'], $user['role'], 'accept_order', 'order', (string)$orderId);
+            success(['order_id' => $orderId, 'status' => $newStatus], 'Order accepted.');
+        }
+
+        pushNotification($order['customer_username'], "Your order #{$orderId} was declined by {$order['outlet_name']}. {$reason}", $orderId);
+        auditLog($user['sub'], $user['role'], 'decline_order', 'order', (string)$orderId, ['reason' => $reason]);
+        success(['order_id' => $orderId, 'status' => $newStatus], 'Order declined.');
+    }
+
+    if ($action === 'confirm-received') {
+        $user = requireAuth(['customer']);
+        if ($order['customer_username'] !== $user['sub']) error('Forbidden.', 403);
+        if ($order['status'] !== 'delivered_pending_confirmation') {
+            error('This order is not waiting for receipt confirmation.', 409);
+        }
+        $db->beginTransaction();
+        try {
+            $db->prepare('UPDATE orders SET status = "completed" WHERE id = ?')->execute([$orderId]);
+            addOrderHistory($db, $orderId, $order['status'], 'completed', $user['sub'], 'customer', 'Customer confirmed receipt');
+            $dstmt = $db->prepare('SELECT id, driver_id FROM deliveries WHERE order_id = ?');
+            $dstmt->execute([$orderId]);
+            $delivery = $dstmt->fetch();
+            if ($delivery) {
+                $db->prepare('UPDATE deliveries SET status = "delivered", delivered_at = COALESCE(delivered_at, NOW()) WHERE id = ?')
+                   ->execute([(int)$delivery['id']]);
+                if (!empty($delivery['driver_id'])) {
+                    $db->prepare('UPDATE driver_availability SET current_delivery_id = NULL WHERE driver_id = ?')
+                       ->execute([(int)$delivery['driver_id']]);
+                }
+            }
+            $db->commit();
+        } catch (Throwable $e) {
+            $db->rollBack();
+            error('Could not confirm receipt.', 500);
+        }
+        auditLog($user['sub'], 'customer', 'confirm_received', 'order', (string)$orderId);
+        success(['order_id' => $orderId, 'status' => 'completed'], 'Receipt confirmed.');
+    }
+}
+
 // ---- POST: place order -----------------------------------------------
-if ($method === 'POST') {
+if ($method === 'POST' && !$orderId) {
     $user = requireAuth(['customer']);
     $body = getBody();
     requireFields($body, ['outlet_id', 'order_type', 'items']);
@@ -81,8 +184,9 @@ if ($method === 'POST') {
         error('Invalid payment method.');
     }
 
-    $specialNotes = isset($body['special_notes']) ? trim((string)$body['special_notes']) : null;
-    $tipAmount    = isset($body['tip_amount'])    ? max(0.0, (float)$body['tip_amount']) : 0.0;
+    $specialNotes  = isset($body['special_notes']) ? trim((string)$body['special_notes']) : null;
+    $tipAmount     = isset($body['tip_amount'])    ? max(0.0, (float)$body['tip_amount']) : 0.0;
+    $promotionCode = isset($body['promotion_code']) ? strtoupper(trim((string)$body['promotion_code'])) : '';
 
     // Verify outlet and ordering mode
     $os = $db->prepare(
@@ -110,7 +214,9 @@ if ($method === 'POST') {
         }
     }
 
-    if (in_array($paymentMethod, ['card', 'mobile_money'], true) && configValue('PAYMENT_PROVIDER_ENABLED', 'false') !== 'true') {
+    if (in_array($paymentMethod, ['card', 'mobile_money'], true)
+        && configValue('PAYMENT_PROVIDER_ENABLED', 'false') !== 'true'
+        && configValue('PAYMENT_PROVIDER', 'sandbox') !== 'sandbox') {
         error('Online payments are not enabled yet. Please use a cash option.');
     }
 
@@ -152,8 +258,63 @@ if ($method === 'POST') {
         ];
     }
 
+    $discountAmount = 0.0;
+    $promotionId = null;
+    if ($promotionCode !== '') {
+        if (!preg_match('/^[A-Z0-9_-]{2,32}$/', $promotionCode)) {
+            error('Invalid promo code format.', 422);
+        }
+
+        $promoStmt = $db->prepare(
+            'SELECT id, discount_type, discount_value, min_order_amount,
+                    max_redemptions, max_uses_per_customer, valid_from, valid_until, is_active
+             FROM promotions
+             WHERE code = ?'
+        );
+        $promoStmt->execute([$promotionCode]);
+        $promo = $promoStmt->fetch();
+        if (!$promo || !(int)$promo['is_active']) {
+            error('Promo code not found or no longer active.', 422);
+        }
+
+        $now = new DateTime('now', new DateTimeZone(TIMEZONE));
+        if ($promo['valid_from'] && new DateTime($promo['valid_from']) > $now) {
+            error('This promo code is not yet active.', 422);
+        }
+        if ($promo['valid_until'] && new DateTime($promo['valid_until']) < $now) {
+            error('This promo code has expired.', 422);
+        }
+        if ($promo['min_order_amount'] !== null && $total < (float)$promo['min_order_amount']) {
+            error('Minimum order amount not met for this promo code.', 422);
+        }
+
+        if ($promo['max_redemptions'] !== null) {
+            $usedStmt = $db->prepare('SELECT COUNT(*) AS used FROM order_promotions WHERE promotion_id = ?');
+            $usedStmt->execute([(int)$promo['id']]);
+            if ((int)$usedStmt->fetch()['used'] >= (int)$promo['max_redemptions']) {
+                error('This promo code has reached its usage limit.', 422);
+            }
+        }
+        if ($promo['max_uses_per_customer'] !== null && (int)$promo['max_uses_per_customer'] > 0) {
+            $perUserStmt = $db->prepare(
+                'SELECT COUNT(*) AS used FROM order_promotions op
+                 JOIN orders o ON o.id = op.order_id
+                 WHERE op.promotion_id = ? AND o.customer_username = ?'
+            );
+            $perUserStmt->execute([(int)$promo['id'], $user['sub']]);
+            if ((int)$perUserStmt->fetch()['used'] >= (int)$promo['max_uses_per_customer']) {
+                error('You have already used this promo code the maximum number of times.', 422);
+            }
+        }
+
+        $promotionId = (int)$promo['id'];
+        $discountAmount = $promo['discount_type'] === 'flat'
+            ? min((float)$promo['discount_value'], $total)
+            : round($total * ((float)$promo['discount_value'] / 100), 2);
+    }
+
     $deliveryFee   = $orderType === 'delivery' ? (float)DEFAULT_DELIVERY_FEE : 0.0;
-    $grandTotal    = $total + $deliveryFee + $tipAmount;
+    $grandTotal    = max(0.0, $total + $deliveryFee + $tipAmount - $discountAmount);
     $paymentStatus = in_array($paymentMethod, ['card', 'mobile_money'], true) ? 'pending' : 'not_required';
 
     $db->beginTransaction();
@@ -181,22 +342,33 @@ if ($method === 'POST') {
         );
         $decrStmt = $db->prepare(
             'UPDATE food_items
-             SET stock_qty = stock_qty - ?
+             SET stock_qty = CASE WHEN stock_qty IS NULL THEN NULL ELSE stock_qty - ? END
              WHERE id = ? AND (stock_qty IS NULL OR stock_qty >= ?)'
         );
         foreach ($validatedItems as $vi) {
             $insi->execute([$newOrderId, $vi['id'], $vi['item_name'], $vi['qty'], $vi['price']]);
             $decrStmt->execute([$vi['qty'], $vi['id'], $vi['qty']]);
-            if ($decrStmt->rowCount() === 0) {
-                // Another concurrent request exhausted stock between our check and update.
+            $stockCheck = $db->prepare('SELECT stock_qty FROM food_items WHERE id = ?');
+            $stockCheck->execute([$vi['id']]);
+            $remainingStock = $stockCheck->fetch()['stock_qty'] ?? null;
+            if ($remainingStock !== null && $decrStmt->rowCount() === 0) {
                 $db->rollBack();
                 error("'{$vi['item_name']}' just sold out. Please remove it and try again.", 409);
             }
         }
-        $db->prepare(
-            'INSERT INTO order_status_history (order_id, from_status, to_status, actor_username, actor_role, note)
-             VALUES (?, NULL, "pending", ?, "customer", "Order placed")'
-        )->execute([$newOrderId, $user['sub']]);
+        addOrderHistory($db, $newOrderId, null, 'pending_vendor', $user['sub'], 'customer', 'Order placed');
+        if ($promotionId !== null && $discountAmount > 0) {
+            $db->prepare(
+                'INSERT INTO order_promotions (order_id, promotion_id, discount_amount)
+                 VALUES (?, ?, ?)'
+            )->execute([$newOrderId, $promotionId, $discountAmount]);
+        }
+        if ($orderType === 'delivery') {
+            $db->prepare(
+                'INSERT INTO deliveries (order_id, dropoff_address, status, eta_minutes, delivery_pin)
+                 VALUES (?, ?, "unassigned", 30, ?)'
+            )->execute([$newOrderId, $deliveryAddress, (string)random_int(1000, 9999)]);
+        }
         $db->commit();
     } catch (Exception $e) {
         $db->rollBack();
@@ -206,12 +378,18 @@ if ($method === 'POST') {
     // Notify customer
     pushNotification(
         $user['sub'],
-        "Your order #{$newOrderId} has been placed successfully! We are preparing it now.",
+        "Your order #{$newOrderId} has been sent to the vendor for confirmation.",
         $newOrderId
     );
 
     auditLog($user['sub'], 'customer', 'place_order', 'order', (string)$newOrderId, ['total' => $grandTotal]);
-    success(['order_id' => $newOrderId, 'subtotal' => $total, 'delivery_fee' => $deliveryFee, 'total' => $grandTotal], 'Order placed successfully.');
+    success([
+        'order_id' => $newOrderId,
+        'subtotal' => $total,
+        'delivery_fee' => $deliveryFee,
+        'discount_amount' => $discountAmount,
+        'total' => $grandTotal,
+    ], 'Order placed successfully.');
 }
 
 // ---- GET: list or single order ----------------------------------------
@@ -240,7 +418,7 @@ if ($method === 'GET') {
 
         // Fetch items
         $istmt = $db->prepare(
-            'SELECT oi.quantity, oi.unit_price, fi.name, fi.image_url
+            'SELECT oi.quantity, oi.unit_price, COALESCE(NULLIF(oi.item_name, ""), fi.name) AS name, fi.image_url
              FROM order_items oi JOIN food_items fi ON fi.id = oi.food_item_id
              WHERE oi.order_id = ?'
         );
@@ -252,24 +430,42 @@ if ($method === 'GET') {
         $rstmt->execute([$orderId]);
         $order['rating'] = $rstmt->fetch() ?: null;
 
+        $pstmt = $db->prepare(
+            'SELECT id, payment_intent_id, provider, method, amount, currency, status, provider_reference, paid_at, created_at
+             FROM payments WHERE order_id = ? ORDER BY created_at DESC'
+        );
+        $pstmt->execute([$orderId]);
+        $order['payments'] = $pstmt->fetchAll();
+
+        $dstmt = $db->prepare(
+            'SELECT d.id, d.driver_id, d.status, d.eta_minutes, d.delivery_pin,
+                    d.assigned_at, d.picked_up_at, d.delivered_at,
+                    dr.full_name AS driver_name, dr.vehicle_type
+             FROM deliveries d
+             LEFT JOIN drivers dr ON dr.id = d.driver_id
+             WHERE d.order_id = ?'
+        );
+        $dstmt->execute([$orderId]);
+        $order['delivery'] = $dstmt->fetch() ?: null;
+
         success($order);
     } else {
         // List orders
         if ($user['role'] === 'customer') {
             $stmt = $db->prepare(
                 'SELECT o.id, o.outlet_id, fo.name AS outlet_name, o.order_type,
-                        o.status, o.total_amount, o.created_at, o.updated_at
+                        o.status, o.payment_status, o.total_amount, o.created_at, o.updated_at
                  FROM orders o JOIN food_outlets fo ON fo.id = o.outlet_id
                  WHERE o.customer_username = ?
                  ORDER BY o.created_at DESC'
             );
             $stmt->execute([$user['sub']]);
         } elseif ($user['role'] === 'staff') {
-            $validStatuses = ['pending','preparing','ready','on_transit','delivered','cancelled'];
+            $validStatuses = ['pending_vendor','accepted','preparing','ready_for_pickup','driver_assigned','picked_up','delivered_pending_confirmation','completed','declined_by_vendor','cancelled'];
             $statusFilter  = (isset($_GET['status']) && in_array($_GET['status'], $validStatuses, true))
                 ? $_GET['status'] : null;
             $sql = 'SELECT o.id, o.customer_username, o.order_type, o.status,
-                           o.total_amount, o.delivery_address, o.special_notes,
+                           o.payment_status, o.total_amount, o.delivery_address, o.special_notes,
                            o.created_at, o.updated_at
                     FROM orders o WHERE o.outlet_id = ?';
             $params = [(int)$user['outlet_id']];
@@ -284,7 +480,7 @@ if ($method === 'GET') {
             // Admin: all orders
             $stmt = $db->query(
                 'SELECT o.id, o.customer_username, o.outlet_id, fo.name AS outlet_name,
-                        o.order_type, o.status, o.total_amount, o.created_at
+                        o.order_type, o.status, o.payment_status, o.total_amount, o.created_at
                  FROM orders o JOIN food_outlets fo ON fo.id = o.outlet_id
                  ORDER BY o.created_at DESC LIMIT 500'
             );
@@ -302,7 +498,7 @@ if ($method === 'PATCH') {
     requireFields($body, ['status']);
     $newStatus = sanitise($body['status']);
 
-    $validStatuses = ['pending', 'preparing', 'ready', 'on_transit', 'delivered', 'cancelled'];
+    $validStatuses = ['pending_vendor','accepted','preparing','ready_for_pickup','driver_assigned','picked_up','delivered_pending_confirmation','completed','declined_by_vendor','cancelled'];
     if (!in_array($newStatus, $validStatuses, true)) {
         error('Invalid status value.');
     }
@@ -318,14 +514,23 @@ if ($method === 'PATCH') {
     }
 
     $legalTransitions = [
-        'pending'    => ['preparing', 'cancelled'],
-        'preparing'  => ['ready', 'cancelled'],
-        'ready'      => ['on_transit', 'delivered', 'cancelled'],
-        'on_transit' => ['delivered', 'cancelled'],
-        'delivered'  => [],
-        'cancelled'  => [],
+        'pending_vendor' => ['accepted', 'declined_by_vendor', 'cancelled'],
+        'accepted'       => ['preparing', 'cancelled'],
+        'preparing'      => ['ready_for_pickup', 'cancelled'],
+        'ready_for_pickup' => ['driver_assigned', 'picked_up', 'completed', 'cancelled'],
+        'driver_assigned' => ['picked_up', 'cancelled'],
+        'picked_up'      => ['delivered_pending_confirmation', 'cancelled'],
+        'delivered_pending_confirmation' => ['completed'],
+        'completed'      => [],
+        'declined_by_vendor' => [],
+        'cancelled'      => [],
     ];
     $oldStatus = $order['status'];
+    if (in_array($newStatus, ['accepted','preparing','ready_for_pickup','driver_assigned','picked_up','delivered_pending_confirmation','completed'], true)
+        && in_array($order['payment_method'], ['card','mobile_money'], true)
+        && $order['payment_status'] !== 'paid') {
+        error('Online payment must be completed before this order can progress.', 409);
+    }
     if ($newStatus !== $oldStatus && !in_array($newStatus, $legalTransitions[$oldStatus] ?? [], true)) {
         error("Cannot move order from {$oldStatus} to {$newStatus}.", 409);
     }
@@ -344,12 +549,16 @@ if ($method === 'PATCH') {
 
     // Notify customer
     $messages = [
-        'preparing'  => "Your order #{$orderId} is now being prepared!",
-        'ready'      => "Great news! Your order #{$orderId} is ready for " .
-                        ($order['order_type'] === 'pickup' ? 'pickup.' : 'collection by our rider.'),
-        'on_transit' => "Your order #{$orderId} is on its way! Track it in the app.",
-        'delivered'  => "Your order #{$orderId} has been delivered. Enjoy your meal!",
-        'cancelled'  => "Your order #{$orderId} has been cancelled.",
+        'accepted' => "Your order #{$orderId} was accepted by the vendor.",
+        'preparing' => "Your order #{$orderId} is now being prepared.",
+        'ready_for_pickup' => "Your order #{$orderId} is ready for " .
+                        ($order['order_type'] === 'pickup' ? 'pickup.' : 'driver pickup.'),
+        'driver_assigned' => "A driver has been assigned to order #{$orderId}.",
+        'picked_up' => "Your order #{$orderId} has been picked up.",
+        'delivered_pending_confirmation' => "Your order #{$orderId} was marked delivered. Please confirm receipt.",
+        'completed' => "Your order #{$orderId} is complete. Enjoy your meal!",
+        'declined_by_vendor' => "Your order #{$orderId} was declined by the vendor.",
+        'cancelled' => "Your order #{$orderId} has been cancelled.",
     ];
     if (isset($messages[$newStatus])) {
         pushNotification($order['customer_username'], $messages[$newStatus], $orderId);
@@ -372,16 +581,13 @@ if ($method === 'DELETE') {
     $order = $stmt->fetch();
     if (!$order) error('Order not found.', 404);
 
-    if ($order['status'] !== 'pending') {
-        error('Only pending orders can be cancelled.');
+    if ($order['status'] !== 'pending_vendor') {
+        error('Only orders waiting for vendor confirmation can be cancelled.');
     }
 
     $db->prepare('UPDATE orders SET status = ?, cancellation_reason = ? WHERE id = ?')
-        ->execute(['cancelled', 'Customer cancelled while pending', $orderId]);
-    $db->prepare(
-        'INSERT INTO order_status_history (order_id, from_status, to_status, actor_username, actor_role, note)
-         VALUES (?, "pending", "cancelled", ?, "customer", "Customer cancelled while pending")'
-    )->execute([$orderId, $user['sub']]);
+        ->execute(['cancelled', 'Customer cancelled before vendor accepted', $orderId]);
+    addOrderHistory($db, $orderId, 'pending_vendor', 'cancelled', $user['sub'], 'customer', 'Customer cancelled before vendor accepted');
     pushNotification($user['sub'], "Your order #{$orderId} has been cancelled.", $orderId);
     auditLog($user['sub'], 'customer', 'cancel_order', 'order', (string)$orderId);
     success([], 'Order cancelled.');

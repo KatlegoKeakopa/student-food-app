@@ -3,19 +3,49 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>UB Food App</title>
+  <title>UB Food — Campus Dining, Ordered in Minutes</title>
+  <!-- Montserrat: closest available web font to bold Futura -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/app.css" />
   <script>
-    window.APP_CONFIG = { googleMapsApiKey: '' };
+    window.APP_CONFIG = { googleMapsApiKey: '', apiBase: '../../backend/api' };
   </script>
 </head>
 <body>
 
 <!-- ============================================================
+     PROFESSIONAL LANDING PAGE
+============================================================ -->
+<div id="screen-landing">
+  <header class="landing-nav">
+    <div class="landing-auth">
+      <button class="landing-auth-btn" onclick="openAuthPanel('login')">Sign in</button>
+      <button class="landing-auth-btn dark" onclick="openAuthPanel('signup')">Sign up</button>
+    </div>
+    <div class="landing-brand" role="img" aria-label="UB Food — University of Botswana Campus Dining">UB Food</div>
+  </header>
+  <main class="landing-hero">
+    <div class="landing-copy">
+      <div class="landing-kicker">University of Botswana campus dining</div>
+      <h1>Campus food, ordered in minutes.</h1>
+      <p>Browse Student Centre vendors, order pickup or delivery, and follow every step from kitchen acceptance to handoff.</p>
+      <div class="landing-actions">
+        <button class="landing-primary" onclick="enterGuestApp()">Order food now</button>
+        <button class="landing-secondary" onclick="openApplicationPanel('vendor')">Apply as a vendor</button>
+        <button class="landing-secondary muted" onclick="openApplicationPanel('driver')">Apply as a delivery driver</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ============================================================
      AUTH SCREENS
 ============================================================ -->
-<div id="screen-auth">
+<div id="screen-auth" class="modal-screen" style="display:none">
   <div class="auth-container">
+    <button class="modal-close-x" onclick="closeAuthPanel()" aria-label="Close">×</button>
     <div class="auth-logo">🍽️</div>
     <div class="auth-title">UB Student Centre</div>
     <div class="auth-subtitle">Food Ordering Application</div>
@@ -65,11 +95,24 @@
       <div class="form-row">
         <div class="form-group">
           <label>Student ID</label>
-          <input class="form-control" type="text" id="signup-studentid" placeholder="2020XXXXX" />
+          <input class="form-control" type="text" id="signup-studentid" placeholder="UB2024XXXXX" />
         </div>
         <div class="form-group">
           <label>Phone</label>
           <input class="form-control" type="tel" id="signup-phone" placeholder="7x xxx xxx" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Account Type</label>
+          <select class="form-control" id="signup-account-type" onchange="updateSignupIdFields()">
+            <option value="student">Student</option>
+            <option value="staff">Staff</option>
+          </select>
+        </div>
+        <div class="form-group" id="work-id-group" style="display:none">
+          <label>Work ID</label>
+          <input class="form-control" type="text" id="signup-workid" placeholder="UB-STAFF-001" />
         </div>
       </div>
       <div class="form-group">
@@ -89,6 +132,38 @@
   </div>
 </div>
 
+<!-- APPLICATION MODALS -->
+<div id="application-modal" class="modal-screen" style="display:none">
+  <div class="application-panel">
+    <button class="modal-close-x" onclick="closeApplicationPanel()" aria-label="Close">×</button>
+    <div id="vendor-application-panel">
+      <h2>Apply as a Vendor</h2>
+      <p class="text-muted">Submit your business for admin verification before appearing on UB Food.</p>
+      <div class="form-row"><div class="form-group"><label>Business Name</label><input class="form-control" id="landing-vendor-business" /></div><div class="form-group"><label>Trading Name</label><input class="form-control" id="landing-vendor-trading" /></div></div>
+      <div class="form-row"><div class="form-group"><label>Owner / Contact</label><input class="form-control" id="landing-vendor-contact" /></div><div class="form-group"><label>Email</label><input class="form-control" id="landing-vendor-email" type="email" /></div></div>
+      <div class="form-row"><div class="form-group"><label>Phone</label><input class="form-control" id="landing-vendor-phone" /></div><div class="form-group"><label>Campus Location</label><input class="form-control" id="landing-vendor-location" /></div></div>
+      <div class="form-row"><div class="form-group"><label>Cuisine Type</label><input class="form-control" id="landing-vendor-cuisine" /></div><div class="form-group"><label>Operating Hours</label><input class="form-control" id="landing-vendor-hours" placeholder="08:00-17:00" /></div></div>
+      <div class="form-row"><label class="check-line"><input type="checkbox" id="landing-vendor-pickup" checked /> Pickup</label><label class="check-line"><input type="checkbox" id="landing-vendor-delivery" checked /> Delivery</label></div>
+      <div class="form-row"><div class="form-group"><label>Trade Licence</label><input class="form-control" id="landing-vendor-licence" /></div><div class="form-group"><label>Food Safety Reference</label><input class="form-control" id="landing-vendor-food-safety" /></div></div>
+      <div class="form-row"><div class="form-group"><label>Payout Method</label><input class="form-control" id="landing-vendor-payout" /></div><div class="form-group"><label>Document URL</label><input class="form-control" id="landing-vendor-document" /></div></div>
+      <div class="form-group"><label>Notes</label><textarea class="form-control" id="landing-vendor-notes" rows="3"></textarea></div>
+      <button class="btn btn-primary" onclick="submitLandingVendorApplication()">Submit Vendor Application</button>
+    </div>
+    <div id="driver-application-panel" style="display:none">
+      <h2>Apply as a Delivery Driver</h2>
+      <p class="text-muted">Approved drivers can receive campus delivery offers when online and available.</p>
+      <div class="form-row"><div class="form-group"><label>Legal Name</label><input class="form-control" id="landing-driver-name" /></div><div class="form-group"><label>Email</label><input class="form-control" id="landing-driver-email" type="email" /></div></div>
+      <div class="form-row"><div class="form-group"><label>Phone</label><input class="form-control" id="landing-driver-phone" /></div><div class="form-group"><label>Student / Staff ID</label><input class="form-control" id="landing-driver-campus-id" /></div></div>
+      <div class="form-row"><div class="form-group"><label>Vehicle Type</label><select class="form-control" id="landing-driver-vehicle"><option>bicycle</option><option>scooter</option><option>car</option><option>walking</option><option>other</option></select></div><div class="form-group"><label>Vehicle Registration</label><input class="form-control" id="landing-driver-registration" /></div></div>
+      <div class="form-row"><div class="form-group"><label>Service Areas</label><input class="form-control" id="landing-driver-areas" /></div><div class="form-group"><label>Emergency Contact</label><input class="form-control" id="landing-driver-emergency" /></div></div>
+      <div class="form-row"><div class="form-group"><label>Payout Method</label><input class="form-control" id="landing-driver-payout" /></div><div class="form-group"><label>Driver Licence</label><input class="form-control" id="landing-driver-licence" /></div></div>
+      <div class="form-row"><div class="form-group"><label>Identity Reference</label><input class="form-control" id="landing-driver-identity" /></div><div class="form-group"><label>Document URL</label><input class="form-control" id="landing-driver-document" /></div></div>
+      <div class="form-group"><label>Notes</label><textarea class="form-control" id="landing-driver-notes" rows="3"></textarea></div>
+      <button class="btn btn-primary" onclick="submitLandingDriverApplication()">Submit Driver Application</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============================================================
      MAIN APP SHELL (shown after login)
 ============================================================ -->
@@ -97,11 +172,26 @@
 
   <!-- HEADER -->
   <header class="app-header">
+    <!-- Left: back button (sub-pages) OR clickable brand logo (home page) -->
     <button class="btn-icon" id="header-back" style="display:none" onclick="goBack()" aria-label="Go back">&#8592;</button>
-    <h1 id="header-title">UB Food App</h1>
-    <div class="badge-notif">
-      <button class="btn-icon" onclick="showPage('notifications')" aria-label="Notifications">&#128276;</button>
-      <span class="badge" id="notif-badge" style="display:none">0</span>
+    <button class="app-header-brand" id="header-brand" onclick="returnToLanding()" title="Back to home page" aria-label="UB Food — return to home page">
+      <span class="brand-dot"></span>UB Food
+    </button>
+
+    <!-- Center title (shown on sub-pages) -->
+    <div class="app-header-center">
+      <h1 id="header-title" style="display:none">UB Food</h1>
+    </div>
+
+    <!-- Right: notifications + landing return button -->
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn-home-landing" id="btn-return-landing" onclick="returnToLanding()" aria-label="Return to landing page">
+        &#8962; <span class="label">Home</span>
+      </button>
+      <div class="badge-notif">
+        <button class="btn-icon" onclick="showPage('notifications')" aria-label="Notifications">&#128276;</button>
+        <span class="badge" id="notif-badge" style="display:none">0</span>
+      </div>
     </div>
   </header>
 
@@ -172,6 +262,9 @@
 
       <div id="delivery-section" style="display:none">
         <div class="section-title">Delivery Location</div>
+        <select class="form-control" id="saved-addresses" onchange="selectSavedAddress()" style="margin-bottom:10px">
+          <option value="">Use a saved address</option>
+        </select>
         <div class="loc-search">
           <input class="form-control" type="text" id="delivery-address" placeholder="Enter building / location name" />
           <button class="btn btn-primary btn-sm" onclick="searchLocation()">📍</button>
@@ -183,6 +276,13 @@
       <select class="form-control" id="payment-method" style="margin-bottom:14px">
         <option value="cash_on_pickup">Cash on Pickup</option>
       </select>
+
+      <div class="section-title">Promo Code</div>
+      <div class="loc-search">
+        <input class="form-control" type="text" id="promo-code" placeholder="Enter promo code" />
+        <button class="btn btn-primary btn-sm" type="button" onclick="applyPromoCode()">Apply</button>
+      </div>
+      <div id="promo-message" class="text-muted" style="display:none; margin-bottom:12px"></div>
 
       <div class="form-group">
         <label>Special Notes (optional)</label>
@@ -227,6 +327,61 @@
           The Blue White Plate Take Away, and Hot Spot Food Court — right from your phone.
           Place orders for pickup or delivery anywhere on campus.
         </p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div style="font-weight:700; margin-bottom:12px">Saved Addresses</div>
+        <div id="profile-addresses" class="text-muted" style="margin-bottom:12px">Loading…</div>
+        <div class="form-group">
+          <label>Label</label>
+          <input class="form-control" id="address-label" placeholder="Hostel, Library, Lab" />
+        </div>
+        <div class="form-group">
+          <label>Address</label>
+          <input class="form-control" id="address-line" placeholder="Building and room / landmark" />
+        </div>
+        <button class="btn btn-outline" onclick="saveProfileAddress()">Save Address</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div style="font-weight:700; margin-bottom:12px">Support</div>
+        <div class="form-group">
+          <label>Subject</label>
+          <input class="form-control" id="support-subject" placeholder="Issue with an order" />
+        </div>
+        <div class="form-group">
+          <label>Message</label>
+          <textarea class="form-control" id="support-message" rows="3" placeholder="Tell us what happened"></textarea>
+        </div>
+        <button class="btn btn-outline" onclick="createSupportTicket()">Send Support Request</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div style="font-weight:700; margin-bottom:12px">Notifications &amp; Privacy</div>
+        <div id="notification-pref-status" class="text-muted" style="font-size:.84rem;margin-bottom:10px">Loading preferences…</div>
+        <label style="display:flex;gap:8px;margin-bottom:8px"><input type="checkbox" id="pref-email" /> Email updates</label>
+        <label style="display:flex;gap:8px;margin-bottom:8px"><input type="checkbox" id="pref-sms" /> SMS updates</label>
+        <label style="display:flex;gap:8px;margin-bottom:8px"><input type="checkbox" id="pref-push" /> Push notifications</label>
+        <label style="display:flex;gap:8px;margin-bottom:12px"><input type="checkbox" id="pref-marketing" /> Promotions and offers</label>
+        <button class="btn btn-outline" onclick="saveNotificationPreferences()">Save Preferences</button>
+        <div class="divider"></div>
+        <select class="form-control" id="data-request-type" style="margin-bottom:8px">
+          <option value="access">Request data access</option>
+          <option value="export">Request data export</option>
+          <option value="correction">Request correction</option>
+          <option value="delete">Request deletion</option>
+        </select>
+        <button class="btn btn-outline" onclick="submitDataRequest()">Submit Privacy Request</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div style="font-weight:700; margin-bottom:12px">Legal Agreements</div>
+        <div id="legal-documents" class="text-muted" style="font-size:.84rem;margin-bottom:12px">Loading legal documents…</div>
+        <button class="btn btn-outline" onclick="acceptCurrentLegalDocs()">Accept Current Policies</button>
       </div>
     </div>
     <button class="btn btn-danger" onclick="logout()" style="width:100%;margin-top:8px">Sign Out</button>
@@ -299,6 +454,10 @@ let selectedStarRating = 0;
 let favoriteOutlets    = new Map();
 let currentCategory    = null;
 let menuSearchTimer    = null;
+let savedAddresses     = [];
+let appliedPromo       = { code: '', discount: 0 };
+let legalDocuments     = [];
+const BYPASS_AUTH_FOR_DEMO = true;
 
 // ============================================================
 // Init
@@ -307,9 +466,53 @@ window.addEventListener('load', () => {
   if (authToken && authUser) {
     showApp();
   } else {
-    document.getElementById('screen-auth').style.display = 'flex';
+    document.getElementById('screen-landing').style.display = 'block';
   }
 });
+
+function enterGuestApp() {
+  if (!authToken && BYPASS_AUTH_FOR_DEMO) {
+    authUser = {
+      username: 'guest',
+      first_name: 'Guest',
+      last_name: '',
+      email: 'guest@ubfood.local',
+      is_guest: true,
+    };
+  }
+  showApp();
+}
+
+// ── Return to landing page without destroying session ────────
+function returnToLanding() {
+  document.getElementById('screen-app').style.display     = 'none';
+  document.getElementById('screen-auth').style.display    = 'none';
+  document.getElementById('application-modal').style.display = 'none';
+  document.getElementById('screen-landing').style.display = 'block';
+  // Clear page history so re-entering the app starts fresh at home
+  pageHistory = [];
+  currentPage = 'home';
+}
+
+function openAuthPanel(mode = 'login') {
+  document.getElementById('screen-auth').style.display = 'flex';
+  if (mode === 'signup') showSignup(); else showLogin();
+}
+
+function closeAuthPanel() {
+  document.getElementById('screen-auth').style.display = 'none';
+  if (!authToken) document.getElementById('screen-landing').style.display = 'block';
+}
+
+function openApplicationPanel(type) {
+  document.getElementById('application-modal').style.display = 'flex';
+  document.getElementById('vendor-application-panel').style.display = type === 'vendor' ? 'block' : 'none';
+  document.getElementById('driver-application-panel').style.display = type === 'driver' ? 'block' : 'none';
+}
+
+function closeApplicationPanel() {
+  document.getElementById('application-modal').style.display = 'none';
+}
 
 // ============================================================
 // Auth
@@ -322,6 +525,17 @@ function showLogin()  {
 function showSignup() {
   document.getElementById('login-form').style.display  = 'none';
   document.getElementById('signup-form').style.display = 'block';
+  updateSignupIdFields();
+}
+
+function updateSignupIdFields() {
+  const type = document.getElementById('signup-account-type')?.value || 'student';
+  const student = document.getElementById('signup-studentid');
+  const workGroup = document.getElementById('work-id-group');
+  if (student) {
+    student.closest('.form-group').style.display = type === 'student' ? 'block' : 'none';
+  }
+  if (workGroup) workGroup.style.display = type === 'staff' ? 'block' : 'none';
 }
 
 document.getElementById('btn-login').addEventListener('click', async () => {
@@ -359,7 +573,9 @@ document.getElementById('btn-signup').addEventListener('click', async () => {
     last_name:  document.getElementById('signup-lastname').value.trim(),
     email:      document.getElementById('signup-email').value.trim(),
     phone:      document.getElementById('signup-phone').value.trim(),
+    account_type: document.getElementById('signup-account-type').value,
     student_id: document.getElementById('signup-studentid').value.trim(),
+    work_id: document.getElementById('signup-workid').value.trim(),
   };
 
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
@@ -385,7 +601,8 @@ async function logout() {
   sessionStorage.removeItem('ub_user');
   authToken = null; authUser = null;
   document.getElementById('screen-app').style.display = 'none';
-  document.getElementById('screen-auth').style.display = 'flex';
+  document.getElementById('screen-landing').style.display = 'block';
+  document.getElementById('screen-auth').style.display = 'none';
   showLogin();
 }
 
@@ -393,6 +610,7 @@ async function logout() {
 // App shell
 // ============================================================
 function showApp() {
+  document.getElementById('screen-landing').style.display = 'none';
   document.getElementById('screen-auth').style.display = 'none';
   document.getElementById('screen-app').style.display  = 'block';
   // Populate profile
@@ -403,8 +621,21 @@ function showApp() {
     document.getElementById('profile-email').textContent = authUser.email || '';
   }
   loadOutlets();
-  loadFavorites();
-  loadNotifications();
+  if (authToken) {
+    loadFavorites();
+    loadAddresses();
+    loadNotifications();
+    loadNotificationPreferences();
+  } else {
+    document.getElementById('notif-badge').style.display = 'none';
+    const notifList = document.getElementById('notif-list');
+    if (notifList) notifList.innerHTML = '<div class="empty-state"><div class="empty-icon">🔔</div><p>Sign in later to use notifications.</p></div>';
+    const prefStatus = document.getElementById('notification-pref-status');
+    if (prefStatus) prefStatus.textContent = 'Sign in later to save notification preferences.';
+    const profileAddresses = document.getElementById('profile-addresses');
+    if (profileAddresses) profileAddresses.textContent = 'Sign in later to save delivery addresses.';
+  }
+  loadLegalDocuments();
   showPage('home');
 }
 
@@ -423,21 +654,33 @@ function showPage(page) {
     document.getElementById(`nav-${page}`)?.classList.add('active');
   }
 
-  const backPages  = ['menu','cart','order-detail','rate','notifications'];
-  const backBtn    = document.getElementById('header-back');
-  backBtn.style.display = backPages.includes(page) ? 'block' : 'none';
+  const backPages = ['menu','cart','order-detail','rate','notifications'];
+  const backBtn   = document.getElementById('header-back');
+  backBtn.style.display = backPages.includes(page) ? 'inline-flex' : 'none';
+
+  // On home: show brand logo prominently; on sub-pages: show title text
+  const brandEl = document.getElementById('header-brand');
+  const titleEl = document.getElementById('header-title');
+  const isHome  = page === 'home';
+  if (brandEl) brandEl.style.display = isHome ? 'flex' : 'none';
+  if (titleEl) titleEl.style.display = isHome ? 'none' : 'block';
 
   // Page titles
   const titles = {
-    home: 'UB Food App', menu: 'Menu', cart: 'My Cart',
+    home: 'UB Food', menu: 'Menu', cart: 'My Cart',
     orders: 'My Orders', 'order-detail': 'Order Details',
     profile: 'Profile', notifications: 'Notifications', rate: 'Rate Order',
   };
-  document.getElementById('header-title').textContent = titles[page] || 'UB Food App';
+  if (titleEl) titleEl.textContent = titles[page] || 'UB Food';
 
   if (page === 'orders')        loadOrders();
   if (page === 'notifications') loadNotifications(true);
   if (page === 'cart')          renderCart();
+  if (page === 'profile' && authToken) {
+    loadAddresses();
+    loadNotificationPreferences();
+    loadLegalDocuments();
+  }
 
   pageHistory.push(currentPage);
   currentPage = page;
@@ -451,9 +694,13 @@ function goBack() {
   ['home','orders','cart','profile'].forEach(n => document.getElementById(`nav-${n}`)?.classList.remove('active'));
   if (['home','orders','cart','profile'].includes(prev)) document.getElementById(`nav-${prev}`)?.classList.add('active');
   const backPages = ['menu','cart','order-detail','rate','notifications'];
-  document.getElementById('header-back').style.display = backPages.includes(prev) ? 'block' : 'none';
-  const titles = { home:'UB Food App', menu:'Menu', cart:'My Cart', orders:'My Orders', 'order-detail':'Order Details', profile:'Profile', notifications:'Notifications', rate:'Rate Order' };
-  document.getElementById('header-title').textContent = titles[prev] || 'UB Food App';
+  document.getElementById('header-back').style.display = backPages.includes(prev) ? 'inline-flex' : 'none';
+  const titles = { home:'UB Food', menu:'Menu', cart:'My Cart', orders:'My Orders', 'order-detail':'Order Details', profile:'Profile', notifications:'Notifications', rate:'Rate Order' };
+  const isHome   = prev === 'home';
+  const brandEl  = document.getElementById('header-brand');
+  const titleEl  = document.getElementById('header-title');
+  if (brandEl) brandEl.style.display = isHome ? 'flex' : 'none';
+  if (titleEl) { titleEl.style.display = isHome ? 'none' : 'block'; titleEl.textContent = titles[prev] || 'UB Food'; }
 }
 
 // ============================================================
@@ -503,6 +750,161 @@ async function toggleOutletFavorite(outletId) {
   if (!res.ok) { toast(res.data.message || 'Could not update favorite.'); return; }
   await loadFavorites();
   toast(existingId ? 'Removed from favorites.' : 'Saved to favorites.');
+}
+
+async function loadAddresses() {
+  const res = await api.getAddresses(authToken);
+  if (!res.ok) return;
+  savedAddresses = res.data.data.addresses || [];
+
+  const checkoutSelect = document.getElementById('saved-addresses');
+  if (checkoutSelect) {
+    checkoutSelect.innerHTML = '<option value="">Use a saved address</option>' +
+      savedAddresses.map(a => `<option value="${a.id}">${escHtml(a.label)} · ${escHtml(a.address_line)}</option>`).join('');
+  }
+
+  const profileList = document.getElementById('profile-addresses');
+  if (profileList) {
+    profileList.innerHTML = savedAddresses.length
+      ? savedAddresses.map(a => `<div style="padding:6px 0"><strong>${escHtml(a.label)}</strong><br>${escHtml(a.address_line)}</div>`).join('')
+      : 'No saved addresses yet.';
+  }
+}
+
+function selectSavedAddress() {
+  const id = document.getElementById('saved-addresses').value;
+  const addr = savedAddresses.find(a => String(a.id) === String(id));
+  if (!addr) return;
+  document.getElementById('delivery-address').value = addr.address_line;
+  if (addr.lat && addr.lng && mapObj) setMapLocation(parseFloat(addr.lat), parseFloat(addr.lng));
+}
+
+async function saveProfileAddress() {
+  const label = document.getElementById('address-label').value.trim();
+  const address = document.getElementById('address-line').value.trim();
+  if (!label || !address) { toast('Add both an address label and address.'); return; }
+  const res = await api.addAddress({ label, address_line: address, is_default: savedAddresses.length === 0 }, authToken);
+  if (!res.ok) { toast(res.data.message || 'Could not save address.'); return; }
+  document.getElementById('address-label').value = '';
+  document.getElementById('address-line').value = '';
+  await loadAddresses();
+  toast('Address saved.');
+}
+
+async function createSupportTicket() {
+  const subject = document.getElementById('support-subject').value.trim();
+  const message = document.getElementById('support-message').value.trim();
+  if (!subject || !message) { toast('Add a subject and message for support.'); return; }
+  const res = await api.createTicket({ subject, message }, authToken);
+  if (!res.ok) { toast(res.data.message || 'Could not send support request.'); return; }
+  document.getElementById('support-subject').value = '';
+  document.getElementById('support-message').value = '';
+  toast('Support request sent.');
+}
+
+async function loadNotificationPreferences() {
+  const res = await api.getNotificationPrefs(authToken);
+  const status = document.getElementById('notification-pref-status');
+  if (!status || !res.ok) return;
+  const p = res.data.data.preferences || {};
+  document.getElementById('pref-email').checked = p.email_enabled == 1;
+  document.getElementById('pref-sms').checked = p.sms_enabled == 1;
+  document.getElementById('pref-push').checked = p.push_enabled == 1;
+  document.getElementById('pref-marketing').checked = p.marketing_enabled == 1;
+  status.textContent = 'Choose how UB Food contacts you about orders and account events.';
+}
+
+async function saveNotificationPreferences() {
+  const res = await api.updateNotificationPrefs({
+    email_enabled: document.getElementById('pref-email').checked ? 1 : 0,
+    sms_enabled: document.getElementById('pref-sms').checked ? 1 : 0,
+    push_enabled: document.getElementById('pref-push').checked ? 1 : 0,
+    marketing_enabled: document.getElementById('pref-marketing').checked ? 1 : 0,
+  }, authToken);
+  toast(res.ok ? 'Notification preferences saved.' : (res.data.message || 'Could not save preferences.'));
+}
+
+async function submitDataRequest() {
+  const type = document.getElementById('data-request-type').value;
+  const res = await api.createDataRequest({ request_type: type }, authToken);
+  toast(res.ok ? 'Privacy request submitted.' : (res.data.message || 'Could not submit request.'));
+}
+
+async function loadLegalDocuments() {
+  const el = document.getElementById('legal-documents');
+  if (!el) return;
+  const res = await api.getLegalDocs();
+  if (!res.ok) { el.textContent = 'Legal documents are unavailable.'; return; }
+  legalDocuments = res.data.data.documents || [];
+  el.innerHTML = legalDocuments.length ? legalDocuments.map(d =>
+    `<div style="margin-bottom:6px">${escHtml(d.title)} <span class="text-muted">v${escHtml(d.version)} · ${new Date(d.effective_date).toLocaleDateString()}</span></div>`
+  ).join('') : 'No active legal documents configured.';
+}
+
+async function acceptCurrentLegalDocs() {
+  if (!legalDocuments.length) await loadLegalDocuments();
+  const ids = legalDocuments.map(d => d.id);
+  if (!ids.length) { toast('No legal documents to accept.'); return; }
+  const res = await api.acceptLegalDocs({ document_ids: ids }, authToken);
+  toast(res.ok ? 'Current policies accepted.' : (res.data.message || 'Could not record consent.'));
+}
+
+async function submitLandingVendorApplication() {
+  const body = {
+    business_name: document.getElementById('landing-vendor-business').value.trim(),
+    trading_name: document.getElementById('landing-vendor-trading').value.trim(),
+    contact_name: document.getElementById('landing-vendor-contact').value.trim(),
+    email: document.getElementById('landing-vendor-email').value.trim(),
+    phone: document.getElementById('landing-vendor-phone').value.trim(),
+    location: document.getElementById('landing-vendor-location').value.trim(),
+    cuisine_type: document.getElementById('landing-vendor-cuisine').value.trim(),
+    operating_hours: document.getElementById('landing-vendor-hours').value.trim(),
+    pickup_available: document.getElementById('landing-vendor-pickup').checked ? 1 : 0,
+    delivery_available: document.getElementById('landing-vendor-delivery').checked ? 1 : 0,
+    service_modes: [
+      document.getElementById('landing-vendor-pickup').checked ? 'pickup' : '',
+      document.getElementById('landing-vendor-delivery').checked ? 'delivery' : '',
+    ].filter(Boolean).join(','),
+    licence_number: document.getElementById('landing-vendor-licence').value.trim(),
+    food_safety_reference: document.getElementById('landing-vendor-food-safety').value.trim(),
+    payout_method: document.getElementById('landing-vendor-payout').value.trim(),
+    document_url: document.getElementById('landing-vendor-document').value.trim(),
+    notes: document.getElementById('landing-vendor-notes').value.trim(),
+  };
+  if (!body.business_name || !body.trading_name || !body.contact_name || !body.email || !body.phone || !body.location) {
+    toast('Complete the required vendor application fields.');
+    return;
+  }
+  const res = await api.submitVendorApplication(body);
+  if (!res.ok) { toast(res.data.message || 'Could not submit vendor application.'); return; }
+  closeApplicationPanel();
+  toast(`Vendor application #${res.data.data.application_id} submitted for admin review.`);
+}
+
+async function submitLandingDriverApplication() {
+  const body = {
+    legal_name: document.getElementById('landing-driver-name').value.trim(),
+    email: document.getElementById('landing-driver-email').value.trim(),
+    phone: document.getElementById('landing-driver-phone').value.trim(),
+    campus_id: document.getElementById('landing-driver-campus-id').value.trim(),
+    vehicle_type: document.getElementById('landing-driver-vehicle').value,
+    vehicle_registration: document.getElementById('landing-driver-registration').value.trim(),
+    service_areas: document.getElementById('landing-driver-areas').value.trim(),
+    emergency_contact: document.getElementById('landing-driver-emergency').value.trim(),
+    payout_method: document.getElementById('landing-driver-payout').value.trim(),
+    licence_number: document.getElementById('landing-driver-licence').value.trim(),
+    identity_reference: document.getElementById('landing-driver-identity').value.trim(),
+    document_url: document.getElementById('landing-driver-document').value.trim(),
+    notes: document.getElementById('landing-driver-notes').value.trim(),
+  };
+  if (!body.legal_name || !body.phone || !body.vehicle_type) {
+    toast('Complete the required driver application fields.');
+    return;
+  }
+  const res = await api.submitDriverApplication(body);
+  if (!res.ok) { toast(res.data.message || 'Could not submit driver application.'); return; }
+  closeApplicationPanel();
+  toast(`Driver application #${res.data.data.application_id} submitted for admin review.`);
 }
 
 // ============================================================
@@ -593,6 +995,7 @@ function changeQty(itemId, delta) {
   if (cart.outletId && cart.outletId !== currentOutletId && delta > 0) {
     if (!confirm('Adding from a different outlet will clear your current cart. Continue?')) return;
     cart = { outletId: null, outletName: '', items: {} };
+    clearPromo(false);
   }
 
   cart.outletId   = currentOutletId;
@@ -613,7 +1016,7 @@ function changeQty(itemId, delta) {
 
 function updateCartFAB() {
   const count = Object.values(cart.items).reduce((s, i) => s + i.qty, 0);
-  const total = Object.values(cart.items).reduce((s, i) => s + i.price * i.qty, 0);
+  const total = Math.max(0, Object.values(cart.items).reduce((s, i) => s + i.price * i.qty, 0) - appliedPromo.discount);
   const fab   = document.getElementById('cart-fab');
   const badge = document.getElementById('nav-cart-count');
 
@@ -655,16 +1058,59 @@ function renderCart() {
       <div class="cart-item-price">BWP ${(v.price * v.qty).toFixed(2)}</div>
       <button class="cart-remove" onclick="removeCartItem(${id})">✕</button>
     </div>
-  `).join('');
+  `).join('') + (appliedPromo.discount > 0 ? `
+    <div class="cart-item">
+      <span>🏷️</span>
+      <div class="cart-item-name">${escHtml(appliedPromo.code)}</div>
+      <div class="cart-item-price">- BWP ${appliedPromo.discount.toFixed(2)}</div>
+      <button class="cart-remove" onclick="clearPromo()">✕</button>
+    </div>` : '');
 
-  document.getElementById('cart-total').textContent = total.toFixed(2);
+  document.getElementById('cart-total').textContent = Math.max(0, total - appliedPromo.discount).toFixed(2);
   updateOrderTypUI();
 }
 
 function removeCartItem(id) {
   delete cart.items[id];
+  if (!Object.keys(cart.items).length) clearPromo(false);
   updateCartFAB();
   renderCart();
+}
+
+function cartSubtotal() {
+  return Object.values(cart.items).reduce((s, i) => s + i.price * i.qty, 0);
+}
+
+async function applyPromoCode() {
+  const code = document.getElementById('promo-code').value.trim();
+  const msg = document.getElementById('promo-message');
+  msg.style.display = 'none';
+  if (!code) { toast('Enter a promo code.'); return; }
+  const subtotal = cartSubtotal();
+  if (subtotal <= 0) { toast('Add items before applying a promo.'); return; }
+
+  const res = await api.applyPromo({ code, order_subtotal: subtotal }, authToken);
+  const data = res.data.data || res.data;
+  if (!res.ok || !data.valid) {
+    appliedPromo = { code: '', discount: 0 };
+    msg.textContent = data.reason || res.data.message || 'Promo code could not be applied.';
+    msg.style.display = 'block';
+    renderCart();
+    return;
+  }
+  appliedPromo = { code: code.toUpperCase(), discount: parseFloat(data.discount_amount || 0) };
+  msg.textContent = data.description || 'Promo applied.';
+  msg.style.display = 'block';
+  renderCart();
+}
+
+function clearPromo(showMessage = true) {
+  appliedPromo = { code: '', discount: 0 };
+  const input = document.getElementById('promo-code');
+  const msg = document.getElementById('promo-message');
+  if (input) input.value = '';
+  if (msg) msg.style.display = 'none';
+  if (showMessage) toast('Promo removed.');
 }
 
 function selectOrderType(type) {
@@ -677,8 +1123,8 @@ function updateOrderTypUI() {
   document.getElementById('type-delivery').classList.toggle('selected', selectedOrderType === 'delivery');
   document.getElementById('delivery-section').style.display = selectedOrderType === 'delivery' ? 'block' : 'none';
   document.getElementById('payment-method').innerHTML = selectedOrderType === 'delivery'
-    ? '<option value="cash_on_delivery">Cash on Delivery</option>'
-    : '<option value="cash_on_pickup">Cash on Pickup</option>';
+    ? '<option value="cash_on_delivery">Cash on Delivery</option><option value="card">Card</option><option value="mobile_money">Mobile Money</option>'
+    : '<option value="cash_on_pickup">Cash on Pickup</option><option value="card">Card</option><option value="mobile_money">Mobile Money</option>';
   if (selectedOrderType === 'delivery') initMap();
 }
 
@@ -747,6 +1193,10 @@ function searchLocation() {
 document.getElementById('btn-place-order').addEventListener('click', async () => {
   const errEl = document.getElementById('order-error');
   errEl.style.display = 'none';
+  if (!authToken) {
+    showErr(errEl, 'Checkout is paused while signup/login is being fixed. You can still browse outlets and build a cart.');
+    return;
+  }
 
   const items = Object.entries(cart.items).map(([id, v]) => ({ food_item_id: parseInt(id), quantity: v.qty }));
   if (!items.length) { showErr(errEl, 'Your cart is empty.'); return; }
@@ -758,6 +1208,7 @@ document.getElementById('btn-place-order').addEventListener('click', async () =>
     payment_method: document.getElementById('payment-method').value,
     special_notes:  document.getElementById('special-notes').value.trim(),
   };
+  if (appliedPromo.code) body.promotion_code = appliedPromo.code;
 
   if (selectedOrderType === 'delivery') {
     body.delivery_address = document.getElementById('delivery-address').value.trim();
@@ -777,11 +1228,27 @@ document.getElementById('btn-place-order').addEventListener('click', async () =>
 
   // Clear cart
   cart = { outletId: null, outletName: '', items: {} };
+  clearPromo(false);
   updateCartFAB();
   mapObj = null; mapMarker = null;
   selectedOrderType = 'pickup';
 
   const orderId = res.data.data.order_id;
+  if (['card', 'mobile_money'].includes(body.payment_method)) {
+    const payRes = await api.createPaymentIntent({
+      order_id: orderId,
+      provider: 'sandbox',
+      idempotency_key: `order-${orderId}-${Date.now()}`,
+    }, authToken);
+    if (payRes.ok) {
+      toast(`Order #${orderId} placed. Complete payment from the order detail screen.`);
+      openOrderDetail(orderId);
+      return;
+    }
+    toast(`Order #${orderId} placed, but payment setup failed: ${payRes.data.message}`);
+    openOrderDetail(orderId);
+    return;
+  }
   toast(`Order #${orderId} placed successfully. We are preparing it now.`);
   showPage('orders');
 });
@@ -791,6 +1258,10 @@ document.getElementById('btn-place-order').addEventListener('click', async () =>
 // ============================================================
 async function loadOrders() {
   const el = document.getElementById('orders-list');
+  if (!authToken) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>Sign in later to view order history.</p></div>';
+    return;
+  }
   el.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading orders…</p></div>';
   const res = await api.getOrders(authToken);
   if (!res.ok) { el.innerHTML = `<div class="alert alert-danger">${res.data.message}</div>`; return; }
@@ -824,12 +1295,21 @@ async function openOrderDetail(id) {
   if (!res.ok) { el.innerHTML = `<div class="alert alert-danger">${res.data.message}</div>`; return; }
   const o = res.data.data;
 
-  const statusSteps = ['pending','preparing','ready','on_transit','delivered'];
-  const stepLabels  = { pending:'Order Placed', preparing:'Preparing', ready:'Ready', on_transit:'On the Way', delivered:'Delivered' };
+  const statusSteps = ['pending_vendor','accepted','preparing','ready_for_pickup','driver_assigned','picked_up','delivered_pending_confirmation','completed'];
+  const stepLabels  = {
+    pending_vendor:'Order Placed',
+    accepted:'Vendor Accepted',
+    preparing:'Preparing',
+    ready_for_pickup:'Ready',
+    driver_assigned:'Driver Assigned',
+    picked_up:'Picked Up',
+    delivered_pending_confirmation:'Delivered',
+    completed:'Confirmed'
+  };
   const curIdx = statusSteps.indexOf(o.status);
 
   const stepsHtml = statusSteps.map((s, i) => {
-    const isDone   = i < curIdx || o.status === 'delivered';
+    const isDone   = i < curIdx || o.status === 'completed';
     const isActive = i === curIdx;
     return `<div class="track-step ${isDone ? 'done' : ''} ${isActive ? 'active-step' : ''}">
       <div class="track-label">${stepLabels[s]}</div>
@@ -837,8 +1317,37 @@ async function openOrderDetail(id) {
     </div>`;
   }).join('');
 
-  const canRate   = o.status === 'delivered' && !o.rating;
-  const canCancel = o.status === 'pending';
+  const canRate   = o.status === 'completed' && !o.rating;
+  const canCancel = o.status === 'pending_vendor';
+  const canConfirm = o.status === 'delivered_pending_confirmation';
+  const latestPayment = (o.payments || [])[0];
+  const needsOnlinePayment = ['card', 'mobile_money'].includes(o.payment_method) && o.payment_status !== 'paid';
+  const paymentHtml = needsOnlinePayment ? `
+    <div class="card">
+      <div class="card-body">
+        <div class="section-title">Payment Required</div>
+        <p class="text-muted" style="font-size:.84rem;margin-bottom:12px">
+          ${latestPayment ? `Payment intent ${escHtml(latestPayment.provider_reference || '')} is ${escHtml(latestPayment.status)}.` : 'Create a secure payment intent to continue this order.'}
+        </p>
+        <button class="btn btn-primary" onclick="${latestPayment ? `completePayment(${latestPayment.payment_intent_id}, ${o.id})` : `startOrderPayment(${o.id})`}">
+          ${latestPayment ? 'Complete Sandbox Payment' : 'Create Payment Intent'}
+        </button>
+      </div>
+    </div>` : '';
+  const deliveryHtml = o.order_type === 'delivery' && o.delivery ? `
+    <div class="card">
+      <div class="card-body">
+        <div class="section-title">Live Delivery</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:.85rem;color:var(--muted)">
+          <span>Driver: ${escHtml(o.delivery.driver_name || 'Not assigned yet')}</span>
+          <span>Status: ${escHtml(o.delivery.status || 'unassigned')}</span>
+          <span>ETA: ${o.delivery.eta_minutes ? `${o.delivery.eta_minutes} min` : 'Pending'}</span>
+          ${o.delivery.delivery_pin ? `<span>PIN: ${escHtml(o.delivery.delivery_pin)}</span>` : ''}
+        </div>
+        <button class="btn btn-outline" style="margin-top:12px" onclick="refreshTracking(${o.id})">Refresh Tracking</button>
+        <div id="tracking-${o.id}" class="text-muted" style="font-size:.82rem;margin-top:10px"></div>
+      </div>
+    </div>` : '';
 
   el.innerHTML = `
     <div class="card">
@@ -873,13 +1382,24 @@ async function openOrderDetail(id) {
       </div>
     </div>
 
-    ${o.status !== 'cancelled' ? `
+    ${o.status === 'declined_by_vendor' ? `
+    <div class="card">
+      <div class="card-body">
+        <div class="section-title">Vendor Declined</div>
+        <p class="text-muted">${escHtml(o.cancellation_reason || 'The vendor could not accept this order.')}</p>
+      </div>
+    </div>` : ''}
+
+    ${!['cancelled','declined_by_vendor'].includes(o.status) ? `
     <div class="card">
       <div class="card-body">
         <div class="section-title">Order Progress</div>
         <div class="tracking-steps">${stepsHtml}</div>
       </div>
     </div>` : ''}
+
+    ${paymentHtml}
+    ${deliveryHtml}
 
     ${o.rating ? `
     <div class="card">
@@ -893,8 +1413,36 @@ async function openOrderDetail(id) {
     <div style="display:flex; gap:10px; margin-top:4px">
       ${canRate   ? `<button class="btn btn-accent" onclick="openRating(${o.id}, '${escHtml(o.outlet_name)}')" style="flex:1">⭐ Rate Order</button>` : ''}
       ${canCancel ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder(${o.id})" style="flex:1">Cancel Order</button>` : ''}
+      ${canConfirm ? `<button class="btn btn-success" onclick="confirmReceived(${o.id})" style="flex:1">Confirm received</button>` : ''}
     </div>
   `;
+}
+
+async function startOrderPayment(orderId) {
+  const res = await api.createPaymentIntent({
+    order_id: orderId,
+    provider: 'sandbox',
+    idempotency_key: `order-${orderId}-${Date.now()}`,
+  }, authToken);
+  toast(res.ok ? 'Payment intent created.' : (res.data.message || 'Could not create payment intent.'));
+  openOrderDetail(orderId);
+}
+
+async function completePayment(intentId, orderId) {
+  const res = await api.confirmPayment(intentId, authToken);
+  toast(res.ok ? 'Payment completed.' : (res.data.message || 'Payment could not be completed.'));
+  openOrderDetail(orderId);
+}
+
+async function refreshTracking(orderId) {
+  const res = await api.getTracking(orderId, authToken);
+  const el = document.getElementById(`tracking-${orderId}`);
+  if (!el) return;
+  if (!res.ok) { el.textContent = res.data.message || 'Tracking unavailable.'; return; }
+  const d = res.data.data.delivery;
+  if (!d) { el.textContent = 'Delivery has not been created yet.'; return; }
+  const coords = d.lat && d.lng ? ` · Last GPS ${parseFloat(d.lat).toFixed(5)}, ${parseFloat(d.lng).toFixed(5)}` : '';
+  el.textContent = `${d.driver_name || 'Driver pending'} · ${d.status || 'unassigned'}${coords}`;
 }
 
 async function cancelOrder(id) {
@@ -902,6 +1450,13 @@ async function cancelOrder(id) {
   const res = await api.cancelOrder(id, authToken);
   if (!res.ok) { toast(res.data.message); return; }
   toast('Order cancelled.');
+  openOrderDetail(id);
+}
+
+async function confirmReceived(id) {
+  const res = await api.confirmReceived(id, authToken);
+  if (!res.ok) { toast(res.data.message || 'Could not confirm receipt.'); return; }
+  toast('Receipt confirmed. Thank you.');
   openOrderDetail(id);
 }
 
@@ -958,6 +1513,11 @@ document.getElementById('btn-submit-rating').addEventListener('click', async () 
 // ============================================================
 async function loadNotifications(markRead = false) {
   const el = document.getElementById('notif-list');
+  if (!authToken) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔔</div><p>Sign in later to use notifications.</p></div>';
+    document.getElementById('notif-badge').style.display = 'none';
+    return;
+  }
   el.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div>';
   const res = await api.getNotifications(authToken);
   if (!res.ok) { el.innerHTML = `<div class="alert alert-danger">${res.data.message}</div>`; return; }
@@ -1008,7 +1568,18 @@ function escHtml(str) {
 }
 
 function statusLabel(s) {
-  const map = { pending:'Pending', preparing:'Preparing', ready:'Ready', on_transit:'On the Way', delivered:'Delivered', cancelled:'Cancelled' };
+  const map = {
+    pending_vendor:'Pending vendor',
+    accepted:'Accepted',
+    preparing:'Preparing',
+    ready_for_pickup:'Ready',
+    driver_assigned:'Driver assigned',
+    picked_up:'Picked up',
+    delivered_pending_confirmation:'Delivered',
+    completed:'Completed',
+    declined_by_vendor:'Declined',
+    cancelled:'Cancelled'
+  };
   return map[s] || s;
 }
 

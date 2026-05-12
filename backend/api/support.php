@@ -26,6 +26,13 @@ if ($method === 'POST') {
     $body = getBody();
     requireFields($body, ['subject', 'message']);
     $orderId = isset($body['order_id']) && $body['order_id'] !== '' ? (int)$body['order_id'] : null;
+    if ($orderId !== null) {
+        $orderCheck = $db->prepare('SELECT id FROM orders WHERE id = ? AND customer_username = ?');
+        $orderCheck->execute([$orderId, $user['sub']]);
+        if (!$orderCheck->fetch()) {
+            error('Order not found for this account.', 404);
+        }
+    }
 
     $stmt = $db->prepare(
         'INSERT INTO support_tickets (customer_username, order_id, subject, message)

@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>UB Food App — Outlet Dashboard</title>
+  <title>UB Food — Vendor Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     :root {
       --primary:   #1565C0;
@@ -20,7 +23,8 @@
       --sidebar-w: 240px;
     }
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+    body{font-family:'Futura PT','Futura Std','Futura','Avenir Next','Avenir','Montserrat','Century Gothic',Arial,sans-serif;font-weight:500;background:var(--bg);color:var(--text);font-size:14px;-webkit-font-smoothing:antialiased;}
+    h1,h2,h3,h4,h5,h6{font-family:'Futura PT','Futura Std','Futura','Avenir Next','Avenir','Montserrat','Century Gothic',Arial,sans-serif;font-weight:800;letter-spacing:-0.01em;}
 
     /* ---- AUTH ---- */
     .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(140deg,var(--primary),var(--primary-dk));}
@@ -88,8 +92,15 @@
     tr:hover{background:#FAFAFA;}
     .status-badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:.72rem;font-weight:700;text-transform:uppercase;}
     .status-pending   {background:#FFF9C4;color:#F57F17;}
+    .status-pending_vendor{background:#FFF9C4;color:#F57F17;}
+    .status-accepted{background:#E0F2F1;color:#00695C;}
     .status-preparing {background:#E3F2FD;color:#1565C0;}
     .status-ready     {background:#E8F5E9;color:#2E7D32;}
+    .status-ready_for_pickup{background:#E8F5E9;color:#2E7D32;}
+    .status-driver_assigned,.status-picked_up{background:#EDE7F6;color:#4527A0;}
+    .status-delivered_pending_confirmation{background:#FFF3E0;color:#E65100;}
+    .status-completed{background:#E8F5E9;color:#1B5E20;}
+    .status-declined_by_vendor{background:#FFEBEE;color:#B71C1C;}
     .status-on_transit{background:#EDE7F6;color:#4527A0;}
     .status-delivered {background:#E8F5E9;color:#1B5E20;}
     .status-cancelled {background:#FFEBEE;color:#B71C1C;}
@@ -187,6 +198,9 @@
       <button class="nav-link" onclick="showSection('reports')" id="nav-reports">
         <span class="icon">📊</span> Reports
       </button>
+      <button class="nav-link" onclick="showSection('settlements')" id="nav-settlements">
+        <span class="icon">💳</span> Settlements
+      </button>
     </nav>
     <div class="sidebar-footer">
       <div class="user-info" id="sb-user-info"></div>
@@ -204,8 +218,8 @@
 
       <!-- Stats -->
       <div class="stats-grid" id="order-stats">
-        <div class="stat-card"><div class="stat-val" id="stat-pending">–</div><div class="stat-label">Pending</div></div>
-        <div class="stat-card accent"><div class="stat-val" id="stat-preparing">–</div><div class="stat-label">Preparing</div></div>
+        <div class="stat-card"><div class="stat-val" id="stat-pending">–</div><div class="stat-label">Pending Vendor</div></div>
+        <div class="stat-card accent"><div class="stat-val" id="stat-preparing">–</div><div class="stat-label">Accepted/Preparing</div></div>
         <div class="stat-card success"><div class="stat-val" id="stat-ready">–</div><div class="stat-label">Ready</div></div>
         <div class="stat-card warning"><div class="stat-val" id="stat-transit">–</div><div class="stat-label">On Transit</div></div>
       </div>
@@ -213,11 +227,12 @@
       <!-- Filter -->
       <div class="filter-bar">
         <button class="filter-pill active" onclick="filterOrders(null, this)">All</button>
-        <button class="filter-pill" onclick="filterOrders('pending', this)">Pending</button>
+        <button class="filter-pill" onclick="filterOrders('pending_vendor', this)">Pending Vendor</button>
+        <button class="filter-pill" onclick="filterOrders('accepted', this)">Accepted</button>
         <button class="filter-pill" onclick="filterOrders('preparing', this)">Preparing</button>
-        <button class="filter-pill" onclick="filterOrders('ready', this)">Ready</button>
-        <button class="filter-pill" onclick="filterOrders('on_transit', this)">On Transit</button>
-        <button class="filter-pill" onclick="filterOrders('delivered', this)">Delivered</button>
+        <button class="filter-pill" onclick="filterOrders('ready_for_pickup', this)">Ready</button>
+        <button class="filter-pill" onclick="filterOrders('picked_up', this)">Picked Up</button>
+        <button class="filter-pill" onclick="filterOrders('completed', this)">Completed</button>
         <button class="btn btn-outline btn-sm refresh-btn" onclick="loadOrders()">🔄 Refresh</button>
       </div>
 
@@ -288,6 +303,22 @@
       </div>
     </section>
 
+    <!-- SETTLEMENTS SECTION -->
+    <section class="section" id="section-settlements">
+      <div class="page-title">Settlements</div>
+      <div class="page-subtitle">Paid orders, refunds, and payout readiness for this outlet</div>
+      <div class="stats-grid" id="settlement-stats"></div>
+      <div class="card">
+        <div class="card-header"><h3>Recent Payment Status</h3></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Order #</th><th>Type</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody id="settlement-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -316,13 +347,19 @@
       <div class="form-group" style="flex:1"><label>Price (BWP) *</label><input class="form-control" type="number" step="0.01" id="item-price" /></div>
       <div class="form-group" style="flex:1"><label>Category *</label><input class="form-control" id="item-cat" /></div>
     </div>
+    <div style="display:flex;gap:10px">
+      <div class="form-group" style="flex:1"><label>Stock Qty</label><input class="form-control" type="number" min="0" id="item-stock" placeholder="Blank = unlimited" /></div>
+      <div class="form-group" style="flex:1"><label>Prep Minutes</label><input class="form-control" type="number" min="1" id="item-prep" value="10" /></div>
+    </div>
+    <div class="form-group"><label>Dietary Tags</label><input class="form-control" id="item-dietary" placeholder="vegan, vegetarian, halal" /></div>
+    <div class="form-group"><label>Allergen Tags</label><input class="form-control" id="item-allergens" placeholder="gluten, dairy, nuts" /></div>
     <div class="form-group"><label>Image URL</label><input class="form-control" id="item-img" placeholder="images/food.jpg" /></div>
     <button class="btn btn-primary" id="btn-add-item">Add Item</button>
   </div>
 </div>
 
 <script>
-const API = '../../backend/api';
+const API = window.APP_CONFIG?.apiBase || '../../backend/api';
 let token    = sessionStorage.getItem('dash_token') || null;
 let staffInfo = JSON.parse(sessionStorage.getItem('dash_user') || 'null');
 let allOrders = [];
@@ -335,9 +372,28 @@ async function req(endpoint, method = 'GET', body = null) {
   if (body && method !== 'GET') opts.body = JSON.stringify(body);
   try {
     const res = await fetch(`${API}/${endpoint}`, opts);
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return {
+        ok: false,
+        data: {
+          message: `API returned ${res.status || 'a non-JSON response'}. Serve the app through Apache/PHP and confirm backend/.htaccess plus APP_CONFIG.apiBase.`,
+        },
+      };
+    }
     const data = await res.json();
     return { ok: res.ok, data };
-  } catch { return { ok: false, data: { message: 'Network error.' } }; }
+  } catch {
+    const isFile = window.location.protocol === 'file:';
+    return {
+      ok: false,
+      data: {
+        message: isFile
+          ? 'The dashboard is open as a file. Use http://localhost/student-food-app/frontend/dashboard/index.html through Apache.'
+          : 'Could not reach the PHP API. Check Apache, backend/.htaccess, and APP_CONFIG.apiBase.',
+      },
+    };
+  }
 }
 
 // ---- AUTH ----
@@ -391,6 +447,7 @@ function showSection(name) {
   if (name === 'ratings')      loadRatings();
   if (name === 'menu-manage')  loadMenuItems();
   if (name === 'reports')      loadReports();
+  if (name === 'settlements')  loadSettlements();
 }
 
 // ---- ORDERS ----
@@ -412,10 +469,10 @@ function filterOrders(status, btn) {
 
 function updateOrderStats(orders) {
   const count = s => orders.filter(o => o.status === s).length;
-  document.getElementById('stat-pending').textContent   = count('pending');
-  document.getElementById('stat-preparing').textContent = count('preparing');
-  document.getElementById('stat-ready').textContent     = count('ready');
-  document.getElementById('stat-transit').textContent   = count('on_transit');
+  document.getElementById('stat-pending').textContent   = count('pending_vendor');
+  document.getElementById('stat-preparing').textContent = count('accepted') + count('preparing');
+  document.getElementById('stat-ready').textContent     = count('ready_for_pickup');
+  document.getElementById('stat-transit').textContent   = count('driver_assigned') + count('picked_up') + count('delivered_pending_confirmation');
 }
 
 function renderOrdersTable(orders) {
@@ -478,23 +535,33 @@ async function openOrderModal(id) {
     ${o.delivery_address ? `<div class="text-muted" style="margin-top:8px;font-size:.82rem">📍 ${escHtml(o.delivery_address)}</div>` : ''}
     ${o.special_notes    ? `<div class="text-muted" style="margin-top:6px;font-size:.82rem">📝 ${escHtml(o.special_notes)}</div>` : ''}
     <div class="divider"></div>
-    <div style="font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:8px">UPDATE STATUS</div>
-    <select class="select-status" id="modal-status-sel">
-      <option value="pending"    ${o.status==='pending'    ?'selected':''}>Pending</option>
-      <option value="preparing"  ${o.status==='preparing'  ?'selected':''}>Preparing</option>
-      <option value="ready"      ${o.status==='ready'      ?'selected':''}>Ready</option>
-      <option value="on_transit" ${o.status==='on_transit' ?'selected':''}>On Transit</option>
-      <option value="delivered"  ${o.status==='delivered'  ?'selected':''}>Delivered</option>
-      <option value="cancelled"  ${o.status==='cancelled'  ?'selected':''}>Cancelled</option>
-    </select>
-    <button class="btn btn-success btn-sm" style="width:100%;margin-top:10px" onclick="updateOrderStatus(${o.id})">
-      Update Order Status
-    </button>
+    <div style="font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:8px">ORDER ACTIONS</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px">
+      ${o.status === 'pending_vendor' ? `<button class="btn btn-success btn-sm" onclick="acceptOrder(${o.id})">Accept</button><button class="btn btn-danger btn-sm" onclick="declineOrder(${o.id})">Decline</button>` : ''}
+      ${o.status === 'accepted' ? `<button class="btn btn-warning btn-sm" onclick="updateOrderStatus(${o.id}, 'preparing')">Start Preparing</button>` : ''}
+      ${o.status === 'preparing' ? `<button class="btn btn-success btn-sm" onclick="updateOrderStatus(${o.id}, 'ready_for_pickup')">Ready for Pickup</button>` : ''}
+      ${o.status === 'ready_for_pickup' && o.order_type === 'pickup' ? `<button class="btn btn-success btn-sm" onclick="updateOrderStatus(${o.id}, 'completed')">Mark Picked Up</button>` : ''}
+      ${o.status === 'ready_for_pickup' && o.order_type === 'delivery' ? `<span class="text-muted">Waiting for driver assignment</span>` : ''}
+    </div>
   `;
 }
 
-async function updateOrderStatus(orderId) {
-  const status = document.getElementById('modal-status-sel').value;
+async function acceptOrder(orderId) {
+  const res = await req(`orders/${orderId}/vendor/accept`, 'POST', {});
+  if (!res.ok) { alert(res.data.message); return; }
+  closeOrderModal();
+  loadOrders();
+}
+
+async function declineOrder(orderId) {
+  const reason = prompt('Reason for declining this order?') || 'Vendor declined the order.';
+  const res = await req(`orders/${orderId}/vendor/decline`, 'POST', { reason });
+  if (!res.ok) { alert(res.data.message); return; }
+  closeOrderModal();
+  loadOrders();
+}
+
+async function updateOrderStatus(orderId, status) {
   const res = await req(`orders/${orderId}`, 'PATCH', { status });
   if (!res.ok) { alert(res.data.message); return; }
   alert(`Order #${orderId} status updated to: ${statusLabel(status)}`);
@@ -561,6 +628,11 @@ async function loadMenuItems() {
         </label>
       </div>
       ${item.description ? `<p class="text-muted" style="font-size:.78rem;margin-top:6px">${escHtml(item.description)}</p>` : ''}
+      <div class="text-muted" style="font-size:.75rem;margin-top:8px">
+        Prep ${item.prep_minutes || 10}m · Stock ${item.stock_qty === null || item.stock_qty === undefined ? 'unlimited' : item.stock_qty}
+      </div>
+      ${item.dietary_tags ? `<div class="text-muted" style="font-size:.75rem;margin-top:4px">Diet: ${escHtml(item.dietary_tags)}</div>` : ''}
+      ${item.allergen_tags ? `<div class="text-muted" style="font-size:.75rem;margin-top:4px">Allergens: ${escHtml(item.allergen_tags)}</div>` : ''}
     </div>
   `).join('');
 }
@@ -573,7 +645,8 @@ async function toggleItem(id, available) {
 function openAddItemModal() {
   document.getElementById('menu-modal').style.display = 'flex';
   document.getElementById('menu-modal-error').style.display = 'none';
-  ['item-name','item-desc','item-price','item-cat','item-img'].forEach(id => document.getElementById(id).value = '');
+  ['item-name','item-desc','item-price','item-cat','item-stock','item-dietary','item-allergens','item-img'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('item-prep').value = '10';
 }
 
 function closeMenuModal(e) {
@@ -596,6 +669,10 @@ document.getElementById('btn-add-item').addEventListener('click', async () => {
     name, price,
     description: document.getElementById('item-desc').value.trim(),
     category:    cat,
+    stock_qty:   document.getElementById('item-stock').value.trim(),
+    prep_minutes: document.getElementById('item-prep').value.trim(),
+    dietary_tags: document.getElementById('item-dietary').value.trim(),
+    allergen_tags: document.getElementById('item-allergens').value.trim(),
     image_url:   document.getElementById('item-img').value.trim(),
   });
   btn.disabled = false; btn.textContent = 'Add Item';
@@ -617,9 +694,9 @@ async function loadReports() {
   const orders = res.data.data || [];
 
   const total     = orders.length;
-  const delivered = orders.filter(o => o.status === 'delivered').length;
+  const delivered = orders.filter(o => o.status === 'completed').length;
   const cancelled = orders.filter(o => o.status === 'cancelled').length;
-  const revenue   = orders.filter(o => o.status === 'delivered').reduce((s,o) => s + parseFloat(o.total_amount), 0);
+  const revenue   = orders.filter(o => o.status === 'completed').reduce((s,o) => s + parseFloat(o.total_amount), 0);
 
   statsEl.innerHTML = `
     <div class="stat-card"><div class="stat-val">${total}</div><div class="stat-label">Total Orders</div></div>
@@ -638,11 +715,50 @@ async function loadReports() {
     </tr>`).join('');
 }
 
+async function loadSettlements() {
+  const statsEl = document.getElementById('settlement-stats');
+  const tbody = document.getElementById('settlement-tbody');
+  statsEl.innerHTML = '<div style="grid-column:1/-1;padding:16px;color:var(--muted)">Loading…</div>';
+  const res = await req('orders');
+  if (!res.ok) { statsEl.innerHTML = `<div class="alert alert-danger">${res.data.message}</div>`; return; }
+  const orders = res.data.data || [];
+  const paid = orders.filter(o => o.payment_status === 'paid');
+  const pending = orders.filter(o => o.payment_status === 'pending');
+  const refundable = orders.filter(o => ['paid','refunded'].includes(o.payment_status));
+  const revenue = paid.reduce((s,o) => s + parseFloat(o.total_amount || 0), 0);
+  statsEl.innerHTML = `
+    <div class="stat-card success"><div class="stat-val">${paid.length}</div><div class="stat-label">Paid Orders</div></div>
+    <div class="stat-card warning"><div class="stat-val">${pending.length}</div><div class="stat-label">Pending Payment</div></div>
+    <div class="stat-card accent"><div class="stat-val">BWP ${revenue.toFixed(2)}</div><div class="stat-label">Paid Revenue</div></div>
+    <div class="stat-card"><div class="stat-val">${refundable.length}</div><div class="stat-label">Refund Visible</div></div>
+  `;
+  tbody.innerHTML = orders.slice(0, 80).map(o => `
+    <tr>
+      <td class="fw-bold">#${o.id}</td>
+      <td>${o.order_type}</td>
+      <td>BWP ${parseFloat(o.total_amount).toFixed(2)}</td>
+      <td>${escHtml((o.payment_status || 'not_required').replace(/_/g,' '))}</td>
+      <td><span class="status-badge status-${o.status}">${statusLabel(o.status)}</span></td>
+      <td class="text-muted">${new Date(o.created_at).toLocaleDateString()}</td>
+    </tr>`).join('');
+}
+
 // ---- UTILS ----
 function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function statusLabel(s) {
-  return {pending:'Pending',preparing:'Preparing',ready:'Ready',on_transit:'On Transit',delivered:'Delivered',cancelled:'Cancelled'}[s] || s;
+  return {
+    pending_vendor:'Pending Vendor',
+    accepted:'Accepted',
+    preparing:'Preparing',
+    ready_for_pickup:'Ready',
+    driver_assigned:'Driver Assigned',
+    picked_up:'Picked Up',
+    delivered_pending_confirmation:'Delivered - Confirming',
+    completed:'Completed',
+    declined_by_vendor:'Declined',
+    cancelled:'Cancelled'
+  }[s] || s;
 }
 function starDisplay(r) {
   const n = Math.round(r||0);

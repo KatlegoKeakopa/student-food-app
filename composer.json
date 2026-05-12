@@ -1,0 +1,10 @@
+{
+  "name": "ub/student-food-app",
+  "description": "University of Botswana student food ordering platform",
+  "type": "project",
+  "require": {},
+  "scripts": {
+    "lint": "php -l backend/includes/helpers.php && php -l backend/config/db.php",
+    "worker:notifications": "php backend/workers/notification_worker.php"
+  }
+}

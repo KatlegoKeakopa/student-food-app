@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UB Food — Driver Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root{--primary:#111827;--green:#06c167;--bg:#f6f7f8;--card:#fff;--text:#111827;--muted:#6b7280;--border:#e5e7eb;--danger:#b91c1c;--blue:#1565c0}
+    *{box-sizing:border-box} body{margin:0;font-family:'Futura PT','Futura Std','Futura','Avenir Next','Avenir','Montserrat','Century Gothic',Arial,sans-serif;font-weight:500;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}
+    h1,h2,h3,h4,h5,h6{font-weight:800;letter-spacing:-0.01em;}
+    header{height:64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:5}
+    h1{font-size:1.1rem;margin:0}.wrap{max-width:980px;margin:0 auto;padding:20px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:0 1px 8px rgba(0,0,0,.05)}
+    .muted{color:var(--muted);font-size:.88rem}.form-control{width:100%;min-height:44px;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:.95rem;margin-top:6px}
+    label{display:block;font-size:.78rem;font-weight:700;color:var(--muted);margin-bottom:10px}.btn{min-height:44px;border:0;border-radius:8px;padding:0 14px;font-weight:800;cursor:pointer}
+    .btn-primary{background:var(--primary);color:#fff}.btn-green{background:var(--green);color:#06120b}.btn-outline{background:#fff;border:1.5px solid var(--primary);color:var(--primary)}.btn-danger{background:var(--danger);color:#fff}
+    .row{display:flex;gap:8px;flex-wrap:wrap}.badge{display:inline-flex;padding:4px 9px;border-radius:999px;background:#ecfdf5;color:#047857;font-size:.74rem;font-weight:800;text-transform:uppercase}
+    table{width:100%;border-collapse:collapse;font-size:.88rem}td,th{padding:10px;border-bottom:1px solid var(--border);text-align:left}th{color:var(--muted);font-size:.75rem;text-transform:uppercase}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>UB Food Driver</h1>
+    <span id="driver-status" class="badge">Offline</span>
+  </header>
+  <main class="wrap">
+    <section class="card" id="login-card">
+      <h2>Driver Access</h2>
+      <p class="muted">Use the driver ID and one-time token issued after admin approval.</p>
+      <div class="grid">
+        <label>Driver ID<input class="form-control" id="driver-id" inputmode="numeric" /></label>
+        <label>API Token<input class="form-control" id="driver-token" type="password" /></label>
+      </div>
+      <button class="btn btn-primary" onclick="saveDriver()">Continue</button>
+    </section>
+
+    <section id="driver-app" style="display:none">
+      <div class="grid">
+        <div class="card">
+          <h2>Availability</h2>
+          <p class="muted">Go online to receive delivery offers. You can accept only one active delivery at a time.</p>
+          <div class="row">
+            <button class="btn btn-green" onclick="setAvailability(true)">Go online</button>
+            <button class="btn btn-outline" onclick="setAvailability(false)">Go offline</button>
+            <button class="btn btn-outline" onclick="loadAll()">Refresh</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Active Delivery</h2>
+          <div id="active-delivery" class="muted">No active delivery.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Available Offers</h2>
+        <div id="offers-list" class="muted">No offers loaded.</div>
+      </div>
+
+      <div class="card">
+        <h2>Earnings</h2>
+        <div style="overflow:auto"><table><thead><tr><th>Delivery</th><th>Order</th><th>Fee</th><th>Tip</th><th>Status</th></tr></thead><tbody id="earnings-body"></tbody></table></div>
+      </div>
+    </section>
+  </main>
+
+<script>
+const API = window.APP_CONFIG?.apiBase || '../../backend/api';
+let driver = JSON.parse(localStorage.getItem('ub_driver') || 'null');
+let activeDelivery = null;
+
+async function req(ep, method='GET', body=null) {
+  const opts = { method, headers:{'Content-Type':'application/json'} };
+  if (body && method !== 'GET') opts.body = JSON.stringify(body);
+  try {
+    const r = await fetch(`${API}/${ep}`, opts);
+    const ct = r.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) return {ok:false,data:{message:`API returned ${r.status}. Use Apache/PHP and confirm backend/.htaccess plus APP_CONFIG.apiBase.`}};
+    const d = await r.json();
+    return {ok:r.ok,data:d};
+  } catch {
+    const isFile = window.location.protocol === 'file:';
+    return {ok:false,data:{message:isFile ? 'The driver app is open as a file. Use http://localhost/student-food-app/frontend/driver/index.html through Apache.' : 'Could not reach the PHP API. Check Apache, backend/.htaccess, and APP_CONFIG.apiBase.'}};
+  }
+}
+window.addEventListener('load', () => { if (driver) showDriver(); });
+function saveDriver(){
+  driver = { id: document.getElementById('driver-id').value.trim(), token: document.getElementById('driver-token').value.trim() };
+  if (!driver.id || !driver.token) { alert('Driver ID and token are required.'); return; }
+  localStorage.setItem('ub_driver', JSON.stringify(driver));
+  showDriver();
+}
+function showDriver(){
+  document.getElementById('login-card').style.display='none';
+  document.getElementById('driver-app').style.display='block';
+  loadAll();
+}
+async function setAvailability(isOnline){
+  const pos = await getPosition();
+  const res = await req('drivers/availability','POST',{driver_id:driver.id,api_token:driver.token,is_online:isOnline?1:0,lat:pos?.lat,lng:pos?.lng});
+  if (!res.ok) { alert(res.data.message); return; }
+  document.getElementById('driver-status').textContent = isOnline ? 'Online' : 'Offline';
+  loadAll();
+}
+function getPosition(){
+  return new Promise(resolve => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(p => resolve({lat:p.coords.latitude,lng:p.coords.longitude}), () => resolve(null), {timeout:2500});
+  });
+}
+async function loadAll(){ await Promise.all([loadOffers(), loadEarnings()]); }
+async function loadOffers(){
+  const res = await req(`dispatch/offers?driver_id=${encodeURIComponent(driver.id)}&api_token=${encodeURIComponent(driver.token)}`);
+  const el = document.getElementById('offers-list');
+  if (!res.ok) { el.textContent = res.data.message; return; }
+  const offers = res.data.data.offers || [];
+  activeDelivery = res.data.data.active_delivery || activeDelivery;
+  el.innerHTML = offers.length ? offers.map(o => `
+    <div class="card" style="box-shadow:none;margin:10px 0">
+      <strong>Order #${o.order_id}</strong> from ${esc(o.outlet_name)}<br>
+      <span class="muted">${esc(o.dropoff_address || 'Campus delivery')} · BWP ${parseFloat(o.delivery_fee || 0).toFixed(2)} fee · Tip BWP ${parseFloat(o.tip_amount || 0).toFixed(2)}</span>
+      <div class="row" style="margin-top:10px">
+        <button class="btn btn-green" onclick="acceptOffer(${o.delivery_id})">Accept</button>
+        <button class="btn btn-outline" onclick="rejectOffer(${o.delivery_id})">Reject</button>
+      </div>
+    </div>`).join('') : 'No delivery offers right now.';
+  renderActive();
+}
+async function acceptOffer(deliveryId){
+  const res = await req('dispatch/accept','POST',{delivery_id:deliveryId,driver_id:driver.id,api_token:driver.token});
+  if (!res.ok) { alert(res.data.message); return; }
+  activeDelivery = {delivery_id:deliveryId};
+  renderActive();
+  loadOffers();
+}
+async function rejectOffer(deliveryId){
+  const res = await req('dispatch/reject','POST',{delivery_id:deliveryId,driver_id:driver.id,api_token:driver.token});
+  if (!res.ok) { alert(res.data.message); return; }
+  loadOffers();
+}
+function renderActive(){
+  const el = document.getElementById('active-delivery');
+  if (!activeDelivery) { el.textContent = 'No active delivery.'; return; }
+  el.innerHTML = `
+    <strong>Order #${activeDelivery.order_id || ''}</strong> ${activeDelivery.outlet_name ? 'from ' + esc(activeDelivery.outlet_name) : ''}
+    <div class="muted">${esc(activeDelivery.dropoff_address || 'Campus delivery')} · ${esc(activeDelivery.status || 'accepted')}</div>
+    <div class="row" style="margin-top:10px"><button class="btn btn-outline" onclick="setDeliveryStatus(${activeDelivery.delivery_id}, 'picked_up')">Picked up</button><button class="btn btn-green" onclick="setDeliveryStatus(${activeDelivery.delivery_id}, 'delivered')">Delivered</button></div>
+  `;
+}
+async function setDeliveryStatus(deliveryId, status){
+  const pos = await getPosition();
+  if (pos) await req('drivers/location','POST',{driver_id:driver.id,api_token:driver.token,delivery_id:deliveryId,lat:pos.lat,lng:pos.lng});
+  const res = await req(`deliveries/${deliveryId}/status`,'PATCH',{driver_id:driver.id,api_token:driver.token,status});
+  if (!res.ok) { alert(res.data.message); return; }
+  if (status === 'delivered') activeDelivery = null;
+  renderActive();
+  loadAll();
+}
+async function loadEarnings(){
+  const res = await req(`drivers/earnings?driver_id=${encodeURIComponent(driver.id)}&api_token=${encodeURIComponent(driver.token)}`);
+  const body = document.getElementById('earnings-body');
+  if (!res.ok) { body.innerHTML = `<tr><td colspan="5">${esc(res.data.message)}</td></tr>`; return; }
+  const rows = res.data.data.earnings || [];
+  body.innerHTML = rows.length ? rows.map(e => `<tr><td>#${e.delivery_id}</td><td>#${e.order_id}</td><td>BWP ${parseFloat(e.delivery_fee).toFixed(2)}</td><td>BWP ${parseFloat(e.tip_amount).toFixed(2)}</td><td>${esc(e.payout_status)}</td></tr>`).join('') : '<tr><td colspan="5">No earnings yet.</td></tr>';
+}
+function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+</script>
+</body>
+</html>

@@ -15,6 +15,7 @@ Thumbs.db
 # PHP
 /vendor/
 composer.lock
+static-server*.log
 
 # Node (if added later)
 node_modules/
